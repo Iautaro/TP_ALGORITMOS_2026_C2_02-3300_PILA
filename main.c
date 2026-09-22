@@ -4,6 +4,9 @@
 // #include "tdacola.h"
 // #include "tdalista.h"
 
+#define TODO_OK 0
+#define ERR -1
+
 int main() {
     printf("Trabajo Práctico Puerto de Contenedores - Operacion Contrarreloj\n");
     return 0;
