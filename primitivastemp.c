@@ -1,3 +1,6 @@
+#define TODO_OK 0
+
+
 int iniciar_jornada(){
   return TODO_OK;
 }
