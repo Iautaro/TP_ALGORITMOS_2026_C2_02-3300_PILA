@@ -19,7 +19,7 @@ void mostrar_operaciones()
 int validar_operacion( char comando[])
 {
     int i=0;
-    //char comandoValidos[6][4] = {"DES","REU","ENT","VER", "ESP"};
+    //char comandoValidos[CANT_COMANDOS][4] = {"DES","REU","ENT","VER", "ESP"};
     const char *comandosValidos[CANT_COMANDOS] = {"DES","REU","ENT","VER", "ESP"};
 
     for( i;comando[i]!='\0';i++)

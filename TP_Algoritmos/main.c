@@ -13,10 +13,11 @@ int main() {
     //printf("\nOperador: ");
     //while(temporizador < tiempo_disponible_asignado && condiciones_de_cierre_jornada) O while(tiempo > 0 &&  condiciones_de_cierre_jornada)
     //{
+
     do{
         mostrar_operaciones(); // Esto sería "Presentacion de operaciones posibles(en pantalla)"
         scanf("%s",&comando); // Esto seria "scanf de operacion (para operador)"
-        printf("El comando es: %s\n");
+        //printf("El comando es: %s\n");
         resultado_comando = validar_operacion(comando);
     }while( resultado_comando == 0);
 
