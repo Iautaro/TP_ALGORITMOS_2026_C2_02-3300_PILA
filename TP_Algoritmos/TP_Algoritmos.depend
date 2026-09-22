@@ -1,0 +1,12 @@
+# depslib dependency file v1.0
+1790035487 source:c:\users\usuario\onedrive\escritorio\tp_algoritmos_l\tp_algoritmos_2026_c2_02-3300_pila\tp_algoritmos\funciones.c
+	"funciones.h"
+	<ctype.h>
+	<string.h>
+
+1790034879 c:\users\usuario\onedrive\escritorio\tp_algoritmos_l\tp_algoritmos_2026_c2_02-3300_pila\tp_algoritmos\funciones.h
+
+1790037412 source:c:\users\usuario\onedrive\escritorio\tp_algoritmos_l\tp_algoritmos_2026_c2_02-3300_pila\tp_algoritmos\main.c
+	<stdio.h>
+	"funciones.h"
+
