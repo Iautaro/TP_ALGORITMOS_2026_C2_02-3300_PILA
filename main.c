@@ -6,9 +6,16 @@
 
 #define TODO_OK 0
 #define ERR -1
+#include "funciones.h"
 
 int main() {
     printf("Trabajo Práctico Puerto de Contenedores - Operacion Contrarreloj\n");
+    printf("Hola");
+    char entrada[10];
+    mostrar_operaciones();
+    scanf("%s", &entrada);
+    tPuerto puerto;
+    ejecutarOperacion(entrada,&puerto);
     return 0;
 }
 
@@ -22,8 +29,8 @@ PROGRAMA "Operación Contrarreloj" -> Borrador
 Main()
 {
 	crear variables para resumen (total buques, total contenedores entregados, etc)
-	
-	aperturas de archivo config.txt. 
+
+	aperturas de archivo config.txt.
 	seteo de las configuraciones (creacion de temporizador, setea los minutos para cada operacion)
 
 	apertura y/o creacion de logs de operador y jornada (txt distintos)
@@ -34,18 +41,18 @@ Main()
 
 	iniciar sesión de operador (inicio de operaciones / inicio de temporizador)
 
-	apertura y/o creacion de archivo operadores.txt 
+	apertura y/o creacion de archivo operadores.txt
 	agregar operador si no existe
 
 	apertura de archivo puerto.txt.
 
-	creacion de colas camiones y buques 
+	creacion de colas camiones y buques
 
 	iniciar_jornada ()	TEMPORIZADOR = 0 M. (revisar si hay buque, camion en tiempo 0) /// TAREA: MATIAS
 
 	while(temporizador < tiempo_disponible_asignado && condiciones_de_cierre_jornada) O while(tiempo > 0 &&  condiciones_de_cierre_jornada)
-	{	
-		presentación de operaciones posibles (en pantalla) 
+	{
+		presentación de operaciones posibles (en pantalla)
 
 		scanf de operacion (para operador)
 
