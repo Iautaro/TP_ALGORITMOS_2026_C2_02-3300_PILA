@@ -17,6 +17,9 @@
 #define PARAMETRO_INCORRECTO -3
 #define EXCESO_PARAMETROS -4
 
+#define ZONA_ORIGEN_VACIA -5
+#define ZONAS_IGUALES -6
+
 //#define MAX_CANT_PAL 10
 #define MAX_CANT_PAL 4
 #define MIN(a,b) ((a) < (b)? (a):(b))
@@ -232,6 +235,23 @@ int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto)
         }
 
         // ejecutarREU
+        tZona *zonaOrigen = buscarZona(puerto, param1);
+        if( zonaOrigen == NULL){
+            return ZONA_INCORRECTA;} // osea zona incorrecta
+
+        tZona *zonaDestino = buscarZona(puerto, param2);
+        if( zonaDestino == NULL){
+            return ZONA_INCORRECTA;}// osea zona incorrecta
+
+        tContenedor contenedor_reubicar;
+        int resultado = ejecutarREU(zonaOrigen,zonaDestino, &contenedor_reubicar);
+        if( resultado != TODO_OK){
+            printf("Error: %d\n", resultado);
+            return resultado;
+        }
+
+        printf(" El contenedor %s ha sido reubicado en la zona %s desde %s.\n", contenedor_reubicar.id, zonaDestino->codZona, zonaOrigen->codZona);
+        return TODO_OK;
     }
     else if (strcmp(comando, "ENT") == 0 || strcmp(comando, "VER") == 0 || strcmp(comando, "ESP") == 0) { // provisorio, puedo separar en 3 dist
         //
@@ -285,4 +305,44 @@ tZona* buscarZona(tPuerto *puerto, const char *idBuscado)
     }
 
     return NULL; // no se encontró
+}
+
+int ejecutarREU( tZona* zonaOrigen, tZona* zonaDest, tContenedor* contenedor_desc){
+
+    if( zonaOrigen->contenedores == NULL){
+        return ZONA_ORIGEN_VACIA;}
+
+    if( strcmp(zonaOrigen->codZona, zonaDest->codZona) == 0 ){
+        return ZONAS_IGUALES;}
+
+    if( zonaDest->cantActual >= zonaDest->capacMax){
+        return ZONA_SIN_CAPACIDAD;}
+
+    desapilar( &zonaOrigen->contenedores,contenedor_desc,sizeof(tContenedor)); // saco de zona origen
+    apilar(&zonaDest->contenedores, contenedor_desc, sizeof(tContenedor)); // apilo en zona destino
+
+
+    zonaOrigen->cantActual --;
+    zonaDest->cantActual++;
+    return TODO_OK;
+}
+
+int desapilar( tPila *p,  void *d, unsigned tamInfo){
+
+
+    if( *p == NULL)
+        return ERROR_PILA;
+    tNodo *nodo_aux = *p; // tope
+    //nodo_aux->tamInfo = tamInfo;
+
+    memcpy(d,nodo_aux->info,MIN(tamInfo,nodo_aux->tamInfo));
+    *p = nodo_aux->sig;
+    free(nodo_aux->info);
+    free(nodo_aux);
+    return TODO_OK;
+}
+
+int ejecutarVER( tPuerto* puerto, int tiempoActual, int puntuacionProv)
+{
+    while( puerto->)
 }

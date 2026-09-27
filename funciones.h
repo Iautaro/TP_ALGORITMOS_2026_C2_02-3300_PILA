@@ -10,6 +10,8 @@
 #include <string.h>
 #include <stdlib.h>
 
+
+
 typedef struct sNodo{
     void*info;
     unsigned tamInfo;
@@ -80,10 +82,13 @@ int validarCantidad( int leidos, int cant_esperada);
 tZona* buscarZona(tPuerto *puerto, const char *idBuscado);
 tMuelle* buscarMuelle(tPuerto *puerto, const char *idBuscado) ;
 
+int ejecutarREU( tZona* zonaOrigen, tZona* zonaDest, tContenedor* contenedor_desc);
+
 
 
 int colaVacia( const tCola *c);
 int desacolar( tCola *c, void *info, unsigned tam);
 int pilaLlena( const tPila *p, unsigned tam);
 int apilar( tPila *p, const void *d, unsigned tamInfo);
+int desapilar( tPila *p,  void *d, unsigned tamInfo);
 #endif // FUNCIONES_H_INCLUDED
