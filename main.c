@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <time.h>
 // #include "tdapila.h"
 // #include "tdacola.h"
 // #include "tdalista.h"
@@ -22,6 +23,7 @@
 #define MAX_LINEA_CONFIG 35
 #define MAX_NOMBRE 51
 #define MAX_CODIGO 12
+#define MAX_NRO_CONT 6
 #define CANT_COMANDOS 5
 
 // Variables de configuracion
@@ -39,15 +41,38 @@ typedef struct
     unsigned tiempoCargaCamion;
 } tConfig;
 
+// Estructura camiones
+typedef struct
+{
+    int tiempo;
+    char contenedor[MAX_NRO_CONT];
+} tCamion;
+
+
+// Puntero a funcion
+typedef int (*Cmp)(const void* a, const void* b);
+int cmpInt(const void* a, const void* b)
+{
+    return *(const int*)a - *(const int*)b;
+}
+int cmpTiempo(const void* a, const void* b)
+{
+    const tCamion* k1 = (const tCamion*)a;
+    const tCamion* k2 = (const tCamion*)b;
+    return k1->tiempo - k2->tiempo;
+}
+
 
 int leerConfiguracion(FILE* arch, tConfig* configuracion);
 FILE* abrirArchivo(char* nomArch);
+int prepararPuerto(FILE* puerto, const tConfig* configuracion, tCola* contenedores, Cmp cmpInt, Cmp cmpTiempo);
 void ingresarTexto(int max, char* texto);
 void mostrarOperaciones();
 char verificarParametrosOperacion(char* param1, char* param2, char tipoParam1);
 char validarOperacion(char* operacion);
 void ejecutarOperacion(); /// TAREA: LAUTARO
 void realizarEventos(); /// TAREA: NICOLAS
+
 
 
 
@@ -62,7 +87,11 @@ int main() {
     unsigned tiempoUtilizado = 0;
     unsigned puntuacionFinal = 0;
 
-    // config
+    tCola contenedores;
+
+    crearCola(&contenedores);
+
+    // Config
     FILE* archConfig = fopen("config.txt", "rt");
     if (!archConfig)
     {
@@ -111,6 +140,20 @@ int main() {
         return ERR_ARCH;
     }
 
+    FILE* archPuerto = fopen("puerto.txt", "wt");
+    if(!archPuerto)
+    {
+        printf("Error al crear archivo puerto.txt\n");
+        fclose(archJornadas);
+        fclose(archOperadores);
+        fclose(archRanking);
+        return ERR_ARCH;
+    }
+    err = prepararPuerto(archPuerto, &configuracion, contenedores, cmpInt, cmpTiempo);
+    if(err)
+        return err;
+
+
     // Inicio de sesion
     char* nombOperador = malloc(MAX_NOMBRE);
     if(!nombOperador)
@@ -119,6 +162,7 @@ int main() {
         fclose(archJornadas);
         fclose(archOperadores);
         fclose(archRanking);
+        fclose(archPuerto);
         return SIN_MEM;
     }
 
@@ -133,9 +177,7 @@ int main() {
             agregar operador si no existe
         */
 
-        // apertura de archivo puerto.txt.
 
-        // creacion de colas camiones y buques
 
     char* operacion = malloc(MAX_CODIGO);
     if(!operacion)
@@ -144,6 +186,7 @@ int main() {
         fclose(archJornadas);
         fclose(archOperadores);
         fclose(archRanking);
+        fclose(archPuerto);
         free(nombOperador);
         return SIN_MEM;
     }
@@ -176,8 +219,10 @@ int main() {
     fclose(archJornadas);
     fclose(archOperadores);
     fclose(archRanking);
+    fclose(archPuerto);
     free(nombOperador);
     free(operacion);
+    vaciarCola(contenedores);
     return 0;
 }
 
@@ -267,6 +312,118 @@ FILE* abrirArchivo(char* nomArch)
     return arch;
 }
 
+int prepararPuerto(FILE* puerto, const tConfig* configuracion, tCola* contenedores, Cmp cmpInt, Cmp cmpTiempo)
+{
+    fprintf(puerto, "JORNADA:%d\n", configuracion->duracionJornadaMinutos);
+    fprintf(puerto, "MUELLES:%d\n", configuracion->cantidadMuelles);
+    fprintf(puerto, "ZONAS:%d\n", configuracion->cantidadZonasAlmacenamiento);
+    fprintf(puerto, "CAPACIDAD_PILA:%d\n", configuracion->capacidadPila);
+    fprintf(puerto, "\n");
+    fprintf(puerto, "[BUQUES]\n");
+
+    int* tiemposBuques = malloc(configuracion->maximoBuques * sizeof(int));
+    if(!tiemposBuques)
+    {
+        printf("Error al asignar memoria para guardar tiempos de buques\n");
+        return SIN_MEM;
+    }
+
+    int i;
+    int b;
+    int c;
+    int k;
+    int contenedoresTotales = 0;
+
+    tCamion* camiones = malloc(configuracion->maximoCamiones * sizeof(tCamion));
+    if(!cammiones)
+    {
+        printf("Error al asignar memoria para guardar camiones\n");
+        free(tiemposBuques);
+        return SIN_MEM;
+    }
+
+
+
+
+    char nroCont[MAX_NRO_CONT];
+
+    srand(time(NULL));
+    for(i = 0; i < configuracion->maximoBuques; i++)
+    {
+        // esto lo que hace es, en la lista de tiempos de llegada, genera un numero entre 0 y el 90% de la duracion
+        // si la duracion es 10, genera un numero entre 0 y 9, para evitar acumulacion de buques al final y tener cierto margen
+        // si queremos que tienda mas a cero, se puede hacer con una funcion logaritmica o similar
+        *(tiemposBuques + i*sizeof(int)) = rand() % (int)((configuracion->duracionJornadaMinutos + 1) * 0.9);
+    }
+    for(i = 0; i < configuracion->maximoCamiones; i++)
+    {
+        // aca lo mismo pero es el 100% de la duracion el maximo
+        *(camiones + i * sizeof(camiones)).tiempo = rand() % (int)(configuracion->duracionJornadaMinutos + 1);
+    }
+
+    qsort(tiemposBuques, configuracion->maximoBuques, sizeof(int), cmpInt);
+
+    // imaginemos 2 buques, 3max por buque, 8 camiones.
+    // b1 c1 c2 c3, b2 c4 c5 c6; c7 y c8?
+    // imaginemos 2 buques, 3max por buque, 2 camion.
+    // b1 c1 c2; b2?
+    // imaginemos 2 buques, 3max por buque, 5 camiones.
+    // b1 c1 c2 c3, b2 c1 c2
+
+    int cantContenedores = configuracion->maximoBuques * configuracion->maximoContenedoresPorBuque < configuracion->maximoCamiones ? configuracion->maximoBuques * configuracion->maximoContenedoresPorBuque : configuracion->maximoCamiones;
+
+    for(b = 1; b <= configuracion->maximoBuques && contenedoresTotales < cantContenedores; b++)
+    {
+        fprintf(puerto, "B%03d;T=%d;C=%d01", b, *(tiemposBuques + i), b);
+        for(c = 1; c <= configuracion->maximoContenedoresPorBuque && contenedoresTotales < cantContenedores; c++, contenedoresTotales++)
+        {
+            // esta funcion escribe a la variable nroCont
+            snprintf(nroCont, MAX_NRO_CONT, "C%d%02d", b, c);
+            fprintf(puerto, ",C%d%02d", b, c);
+            if(ponerEnCola(contenedores, nroCont, strlen(nroCont)) != TODO_OK)
+            {
+                printf("Error al asignar memoria para cola de contenedores para puerto.txt\n");
+                return SIN_MEM;
+            }
+        }
+    }
+
+    // antes de ordenar por tiempo, desacolo los contenedores y genero los tiempos, luego ordeno por tiempo y los contenedores quedan mezclados
+
+    i = 0;
+    while(!colaVacia(contenedores))
+    {
+        if(sacarDeCola(contenedores, *(camiones + i * sizeof(tCamion)).contenedor, MAX_NRO_CONT) != TODO_OK)
+        {
+            printf("Error al asignar memoria para sacar de cola\n");
+            return SIN_MEM;
+        }
+        i++;
+    }
+
+    qsort(camiones, configuracion->maximoCamiones, sizeof(int), cmpTiempo);
+
+
+
+    fprintf(puerto, "\n");
+    fprintf(puerto, "\n");
+    fprintf(puerto, "[CAMIONES]\n");
+    for(k = 1; k <= configuracion->maximoCamiones; k++)
+    {
+        fprintf(puerto, "K%03d;T=%d;C=%s\n", k, *(camiones + i * sizeof(tCamion)).tiempo, *(camiones + i * sizeof(tCamion)).contenedor);
+    }
+
+
+
+
+    // T < duracionJornadaMinutos
+    // B = maximoBuques
+    // C = maximoContenedoresPorBuque
+    // K = maximoCamiones
+    free(tiempos);
+    return TODO_OK;
+}
+
 void ingresarTexto(int max, char* texto)
 {
     fgets(texto, max, stdin);
@@ -333,7 +490,7 @@ char validarOperacion(char* operacion)
 
     char aux[MAX_CODIGO];
     strcpy(aux, operacion);
-    char* comando = strtok(aux, " \n");
+    char* comando = strtok(aux, " \n\0");
     char* parametro1;
     char* parametro2;
 
@@ -346,8 +503,8 @@ char validarOperacion(char* operacion)
     }
     if(encontrado == 's' && (strcmp(comando, "DES") == 0 || strcmp(comando, "REU") == 0))
     {
-        parametro1 = strtok(NULL, " \n");
-        parametro2 = strtok(NULL, " \n");
+        parametro1 = strtok(NULL, " \n\0");
+        parametro2 = strtok(NULL, " \n\0");
         if(!parametro1 || !parametro2)
             return 'n';
         if(strcmp(comando, "DES") == 0)
