@@ -157,7 +157,7 @@ int validarCantidad( int leidos, int cant_esperada)
 
 
 
-int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto)
+int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int tiempoAct, int puntuacion)
 { // entrada: "DES M1 >1". puerto: estado actual de la simulacion. Basicamente entrada es la operacion y puerto es el estado.
 
     int i=0;
@@ -253,13 +253,17 @@ int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto)
         printf(" El contenedor %s ha sido reubicado en la zona %s desde %s.\n", contenedor_reubicar.id, zonaDestino->codZona, zonaOrigen->codZona);
         return TODO_OK;
     }
-    else if (strcmp(comando, "ENT") == 0 || strcmp(comando, "VER") == 0 || strcmp(comando, "ESP") == 0) { // provisorio, puedo separar en 3 dist
+    else if (strcmp(comando, "ENT") == 0  || strcmp(comando, "VER") == 0 ||strcmp(comando, "ESP") == 0) { // provisorio, puedo separar en 3 dist
         //
         int validacion = validarCantidad(cantPal, 1);
         if (validacion != OP_EXITO)
         {return validacion;}
 
         // ejecutarENT, ejecutarVER, ejecutarESP
+        if(strcmp(comando, "VER") == 0){
+                ejecutarVER(puerto, tiempoAct, puntuacion);
+                return TODO_OK;
+        }
     }
     else {
         // El comando ingresado no existe
@@ -342,7 +346,88 @@ int desapilar( tPila *p,  void *d, unsigned tamInfo){
     return TODO_OK;
 }
 
-int ejecutarVER( tPuerto* puerto, int tiempoActual, int puntuacionProv)
+void ejecutarVER( tPuerto* puerto, int tiempoActual, int puntuacionProv)
 {
-    while( puerto->)
+    printf("\n\t\tESTADO DEL PUERTO\n");
+    printf("Tiempo: %d\n", tiempoActual);
+    printf("Puntuacion actual: %d\n", puntuacionProv);
+
+
+    printf("\n MUELLES\n"); // buques atracados en muelle
+    int i=0;
+    for(i; i<= puerto->cantMuelles; i++){ // Recorro segun cant muelles
+        tMuelle *m = ((puerto->muelles)+i);
+        // tMuelle *m = &puerto->muelles[i];
+        if( m->buqueAct == NULL )
+        {
+            printf(" Muelle %s: Libre", m->codMuelle);
+        }
+        else
+        {   if( m->buqueAct->cont_pend.pri == NULL )
+            {
+            printf("%s: %s -> Sin contenedores pendientes.\n", m->codMuelle, m->buqueAct->codigoBuque);
+            //printf(" Cod Muelle %s ->", puerto->muelles[i]->codMuelle);
+            //printf(" Buque atracado:%s\n", puerto->muelles[i]->buqueAct->codigoBuque);
+            } else{
+            tContenedor *prox = (tContenedor*)m->buqueAct->cont_pend.pri->info;
+            printf("%s: %s -> proximo contenedor %s.\n", m->codMuelle, m->buqueAct->codigoBuque, prox->id);
+            }
+        }
+    }
+
+    int contador = 0; // Cant buques esperando
+    tNodo *aux = puerto->buquesEsperando.pri; // punt auxiliar para recorrer cola de buques
+    while( aux != NULL)
+    {
+        contador++;
+        aux = aux->sig;
+    }
+    printf("Cantidad de buques esperando muelles disponibles: %d\n", contador);
+
+    // contenido zonas de almacenamiento
+    printf("\n --- Zonas de almacenamiento ---\n");
+    tNodo *aux_zonas = puerto->zonas;
+    while( aux_zonas != NULL)
+    {
+        tZona *zona = (tZona*)aux_zonas->info;
+        printf("%s: [", zona->codZona);
+
+        tNodo *nodoCont = zona->contenedores; // pila de contenedores propios de ESA zona
+        while( nodoCont != NULL)
+        {
+            tContenedor *c = (tContenedor*)nodoCont->info;
+            printf("%s",c->id);
+            if( nodoCont->sig != NULL)
+            {
+                printf("|");
+            }
+            nodoCont = nodoCont->sig;
+        }
+        printf("]\n");
+        aux_zonas = aux_zonas->sig; // siguiente zona
+    }
+
+
+}
+
+
+tZona* buscarZonaTope(tLista zonas, const char *codContBuscado)
+{
+    tNodo *aux = zonas;
+    while(aux != NULL)
+    {
+        tZona *zonaActual= (tZona*)aux->info;
+
+        if( zonaActual->contenedores != NULL){
+            tNodo *nodoCont = zonaActual->contenedores;
+            tContenedor *c = (tContenedor*)nodoCont->info;
+
+            if( strcmp(c->id,codContBuscado)==0 ){
+                return zonaActual;
+            }
+        }
+
+        aux = aux->sig;
+    }
+    return NULL;
 }

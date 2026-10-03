@@ -80,12 +80,15 @@ int ejecutarDES( tMuelle *muelle, tZona *zonaDest, tContenedor *contenedor_desca
 void mostrar_operaciones();
 int validarCantidad( int leidos, int cant_esperada);
 tZona* buscarZona(tPuerto *puerto, const char *idBuscado);
+tZona* buscarZonaTope(tLista zonas, const char *codContBuscado);
 tMuelle* buscarMuelle(tPuerto *puerto, const char *idBuscado) ;
 
+int ejecutarENT( tPuerto* puerto);
 int ejecutarREU( tZona* zonaOrigen, tZona* zonaDest, tContenedor* contenedor_desc);
+void ejecutarVER( tPuerto* puerto, int tiempoActual, int puntuacionProv);
+int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int tiempoAct, int puntuacion);
 
-
-
+//int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto);
 int colaVacia( const tCola *c);
 int desacolar( tCola *c, void *info, unsigned tam);
 int pilaLlena( const tPila *p, unsigned tam);
