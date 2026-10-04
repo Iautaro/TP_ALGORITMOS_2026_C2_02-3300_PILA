@@ -73,6 +73,13 @@ typedef struct{
     tCola camionesEsperando;
 }tPuerto; // aca agrupo todo lo que hay AHORA en el puerto.
 
+
+typedef struct{
+    char codCamion[TAM_NOMBRE];
+    char codContenedorSolic[TAM_NOM_CONTENEDOR];
+    int horaLlegada;
+}tCamion;
+
 // ---------------------------------
 
 //int ejecutarDES( tMuelle *muelle, tPila *zonaDest, tContenedor *contenedor_descarga);
@@ -83,7 +90,7 @@ tZona* buscarZona(tPuerto *puerto, const char *idBuscado);
 tZona* buscarZonaTope(tLista zonas, const char *codContBuscado);
 tMuelle* buscarMuelle(tPuerto *puerto, const char *idBuscado) ;
 
-int ejecutarENT( tPuerto* puerto);
+int ejecutarENT( tPuerto* puerto, tContenedor* contenedorDesc, tCamion *camionAtendido);
 int ejecutarREU( tZona* zonaOrigen, tZona* zonaDest, tContenedor* contenedor_desc);
 void ejecutarVER( tPuerto* puerto, int tiempoActual, int puntuacionProv);
 int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int tiempoAct, int puntuacion);

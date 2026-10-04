@@ -20,6 +20,9 @@
 #define ZONA_ORIGEN_VACIA -5
 #define ZONAS_IGUALES -6
 
+#define NO_HAY_CAMIONES -7
+#define CONTENEDOR_NO_DISPONIBLE -8
+
 //#define MAX_CANT_PAL 10
 #define MAX_CANT_PAL 4
 #define MIN(a,b) ((a) < (b)? (a):(b))
@@ -430,4 +433,31 @@ tZona* buscarZonaTope(tLista zonas, const char *codContBuscado)
         aux = aux->sig;
     }
     return NULL;
+}
+
+int ejecutarENT( tPuerto* puerto, tContenedor* contenedorDesc, tCamion *camionAtendido)
+{
+    if( puerto->camionesEsperando.pri  == NULL ) // verifico existencia de camiones
+    {return NO_HAY_CAMIONES;}
+
+    tCamion *camionFrente = (tCamion*)puerto->camionesEsperando.pri->info;// contenedor solicitado por camion atendido
+
+    tZona *zonaContenedor = buscarZonaTope(puerto->zonas, camionFrente->codContenedorSolic); // busco zona donde este contenedor ej C101
+    if( zonaContenedor == NULL)
+    {
+        return CONTENEDOR_NO_DISPONIBLE;
+    }
+
+    if( desapilar(&zonaContenedor->contenedores, contenedorDesc, sizeof(tContenedor)) !=  TODO_OK )
+    {
+        return ERROR_PILA;
+    }
+    zonaContenedor->cantActual--; // le saco un contenedor
+    if( desacolar(&puerto->camionesEsperando, camionAtendido, sizeof(tCamion)) != TODO_OK )
+    {
+        return ERROR_PILA;
+    }
+
+
+    return TODO_OK;
 }
