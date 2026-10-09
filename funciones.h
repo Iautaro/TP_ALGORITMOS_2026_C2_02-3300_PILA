@@ -19,6 +19,10 @@
 #define ERR_MEMORIA 204
 #define FIN_JORNADA 205
 #define NO_HALLADO 206
+#define FIN_CAMIONES 207
+#define FIN_BUQUE 208
+
+#define minimo( X , Y ) ( ( X ) <= ( Y ) ? ( X ) : ( Y ) )
 
 typedef struct
 {
@@ -80,10 +84,16 @@ typedef struct{
     tCola camionesEsperando;
 }tPuerto;
 
-int realizarEventos(tCola *buques, tCola *camiones, tMuelle *muelle, tOperacion *operacion, unsigned *temporizador, FILE *pfOperador, tOperador *operador,
-                char *nombreArchivoPuerto, unsigned posUltimoBuque, unsigned posUltimoCamion, unsigned *tiempoJornada);
-int vigiladorBuques(tCola *buques, tMuelle *muelle, const unsigned *temporizador, const int *tiempoPorDefault, FILE *pfPuerto, unsigned posUltimoBuque);
-int vigiladorCamiones(tCola *camiones, const unsigned *temporizador, FILE *pfPuerto, unsigned posUltimoCamion);
+int parsearBuques(tBuque *buque, char *buffer, char* bufferCodigo);
+int parsearCamiones(tCamion *camion, char *buffer);
+int crearBuquesyCamiones(tCola *buquesArchivo, tCola *camionesArchivo, FILE *pfPuerto);
+
+int realizarEventos(tCola *buquesEsperando, tCola *camionesEsperando, tCola *buquesArchivo, tCola *camionesArchivo, tMuelle *muelle, tOperacion *operacion,
+                    tOperador *operador, unsigned *temporizador, unsigned *tiempoJornada);
+
+int vigiladorBuques(tCola *buquesEsperando, tCola *buquesArchivo, tMuelle *muelle, const unsigned *temporizador, const int *tiempoPorDefault);
+int vigiladorCamiones(tCola *camionesEsperando, tCola *camionesArchivo, const unsigned *temporizador);
+
 int asignarMuelle(tBuque *buque, tMuelle *muelle);
 
 /**
@@ -93,5 +103,8 @@ int asignarMuelle(tBuque *buque, tMuelle *muelle);
 void crearPila(tPila *p);
 int ponerEnPila(tPila *p, const void *d, unsigned cantBytes);
 int ponerEnCola(tCola *p, const void *d, unsigned cantBytes);
+void crearCola(tCola *p);
+int sacarDeCola(tCola *p, void *d, unsigned cantBytes);
+int colaVacia(const tCola *p);
 
 #endif // FUNCIONES_H_INCLUDED

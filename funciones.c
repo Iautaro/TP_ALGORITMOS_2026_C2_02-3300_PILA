@@ -1,19 +1,149 @@
 #include "funciones.h"
 
-int realizarEventos(tCola *buques, tCola *camiones, tMuelle *muelle, tOperacion *operacion, unsigned *temporizador, FILE *pfOperador, tOperador *operador,
-                    char *nombreArchivoPuerto, unsigned posUltimoBuque, unsigned posUltimoCamion, unsigned *tiempoJornada)
+int parsearBuques(tBuque *buque, char *buffer, char* bufferCodigo)
+{
+    // salgo si no encontro un buque donde debería estar
+    char* ptrBuffer = strchr(buffer, 'B');
+    if(!ptrBuffer)
+    {
+        return NO_HALLADO;
+    }
+
+    // inicio desarmar buffer
+    ptrBuffer = strchr(buffer, '\n');
+    if(!ptrBuffer)
+    {
+        return ERR_LINEA_LARGA;
+    }
+    *ptrBuffer = '\0';
+
+    while((ptrBuffer = strrchr(buffer, ','))!=NULL) // leo tantos C= como halla en archivo excepto el primero (usa ";")
+    {
+        strncpy(bufferCodigo,ptrBuffer+1,TAM_LINEA_CODIGO_CONT);
+        bufferCodigo[TAM_LINEA_CODIGO_CONT]='\0'; // buffer tendra vector de char que ira a pila de codigos de buque actual
+        ponerEnPila(&buque->codigoContenedores, bufferCodigo, strlen(bufferCodigo));
+        *ptrBuffer = '\0';
+    }
+
+    ptrBuffer = strrchr(buffer, ';');   // busco el ultimo C= con ";"
+    strncpy(bufferCodigo,ptrBuffer+3,TAM_LINEA_CODIGO_CONT);; // ptrBuffer+3 salto ;C= y queda en C de C001
+    bufferCodigo[TAM_LINEA_CODIGO_CONT]='\0';
+    ponerEnPila(&buque->codigoContenedores, bufferCodigo, strlen(bufferCodigo)); // ultima carga al fondo de pila y primera queda en tope
+    *ptrBuffer = '\0';
+
+    ptrBuffer = strrchr(buffer, ';');
+    sscanf(ptrBuffer+3,"%u", &buque->tiempoLlegada);
+    //buque->tiempoLlegada = atoi(ptrBuffer+3);
+    *ptrBuffer = '\0';
+
+    strncpy(buque->codigoBuque,buffer,TAM_NOMBRE);
+    buque->codigoBuque[TAM_NOMBRE]='\0';
+    // fin desarmar buffer
+
+    return TODO_OK;
+}
+int parsearCamiones(tCamion *camion, char *buffer)
+{
+    // salgo si no encontro un camion "K" donde debería estar
+    char* ptrBuffer = strchr(buffer, 'K');
+    if(!ptrBuffer)
+    {
+        return NO_HALLADO;
+    }
+
+    // inicio desarmar buffer
+    ptrBuffer = strchr(buffer, '\n');
+    if(!ptrBuffer)
+    {
+        return ERR_LINEA_LARGA;
+    }
+    *ptrBuffer = '\0';
+
+    /// Formato esperado: K1;T=0;C=C101
+    // solo manejamos un contenedor, pila no necesaria
+
+    ptrBuffer = strrchr(buffer, ';');
+    strncpy(camion->codigoContenedor,ptrBuffer+3,TAM_LINEA_CODIGO_CONT); // ptrBuffer+3 salto ;C= y queda en C de C001
+    *ptrBuffer = '\0';
+
+    ptrBuffer = strrchr(buffer, ';');
+    sscanf(ptrBuffer+3,"%u", &camion->tiempoLlegada);
+    *ptrBuffer = '\0';
+
+    strncpy(camion->codigoCamion,buffer,TAM_NOMBRE);
+    camion->codigoCamion[TAM_NOMBRE]='\0';
+    // fin desarmar buffer
+
+    return TODO_OK;
+}
+
+int crearBuquesyCamiones(tCola *buquesArchivo, tCola *camionesArchivo, FILE *pfPuerto)
+{
+    tBuque buque;
+    tCamion camion;
+    int comparacion = 1;
+
+    char buffer[TAM_LINEA_BUFF_LECTURA];
+    char bufferCodigo[TAM_LINEA_CODIGO_CONT];
+
+    crearCola(buquesArchivo);
+    crearCola(camionesArchivo);
+    crearPila(&buque.codigoContenedores); /// creo pila dinamica para contenedores dentro de buque
+
+    /// Inicio buscando buques
+    // leo hasta llegar a [BUQUES]
+    while(fgets(buffer, TAM_LINEA_BUFF_LECTURA, pfPuerto) && comparacion != 0)
+    {
+        comparacion = strncmp(buffer, "[BUQUES]", 8);
+    }
+
+    // caso: llego al final del archivo y no hallo CAMIONES
+    if(comparacion != 0)
+    {
+        return NO_HALLADO;
+    }
+
+    while(fgets(buffer, TAM_LINEA_BUFF_LECTURA, pfPuerto))
+    {
+        if(parsearBuques(&buque, buffer, bufferCodigo)!=TODO_OK)
+        {
+            return NO_HALLADO;
+        }
+        ponerEnCola(buquesArchivo , &buque,sizeof(tBuque));
+    }
+
+    /// avanzo buscando Camiones
+    comparacion = 1; // reseteo comparacion
+
+    // primera pasada debo leer hasta llegar a primer camion
+    while(fgets(buffer, TAM_LINEA_BUFF_LECTURA, pfPuerto) && comparacion != 0)
+    {
+        comparacion = strncmp(buffer, "[CAMIONES]", 10);
+    }
+
+    // caso: llego al final del archivo y no hallo CAMIONES
+    if(comparacion != 0)
+    {
+        return NO_HALLADO;
+    }
+
+        while(fgets(buffer, TAM_LINEA_BUFF_LECTURA, pfPuerto))
+    {
+        if(parsearCamiones(&camion, buffer)!=TODO_OK)
+        {
+            return NO_HALLADO;
+        }
+        ponerEnCola(camionesArchivo, &camion, sizeof(tCamion));
+    }
+
+    return TODO_OK;
+}
+
+int realizarEventos(tCola *buquesEsperando, tCola *camionesEsperando, tCola *buquesArchivo, tCola *camionesArchivo, tMuelle *muelle, tOperacion *operacion,
+                    tOperador *operador, unsigned *temporizador, unsigned *tiempoJornada)
 {
 
-    /// posUltimoBuque y  posUltimoCamion
-    // guardo pos de ultimo buque/camion leido en archivo, variable que va en main.
-
     unsigned tiempoLimite = 0;
-    FILE *pfPuerto = fopen(nombreArchivoPuerto,"rt");
-    if(!pfPuerto)
-    {
-        printf("Error al abrir el archivo %s", nombreArchivoPuerto);
-        return ERR_ARCHIVO;
-    }
 
     tiempoLimite = *temporizador + operacion->tiempoPorDefault;
     if(tiempoLimite > *tiempoJornada) // detección de fin de jornada
@@ -23,14 +153,12 @@ int realizarEventos(tCola *buques, tCola *camiones, tMuelle *muelle, tOperacion 
 
     while(*temporizador<tiempoLimite)
     {
-        if(vigiladorBuques(buques, muelle, temporizador, &operacion->tiempoPorDefault, pfPuerto, posUltimoBuque)!=TODO_OK)// llegada buques
+        if(vigiladorBuques(buquesEsperando, buquesArchivo, muelle, temporizador, &operacion->tiempoPorDefault)!=TODO_OK)// llegada buques
         {
-            fclose(pfPuerto);
             return ERR_VIGILADOR;
         }
-        if(vigiladorCamiones(camiones, temporizador, pfPuerto, posUltimoCamion)!=TODO_OK) // llegada camiones
+        if(vigiladorCamiones( camionesEsperando, camionesArchivo, temporizador)!=TODO_OK) // llegada camiones
         {
-            fclose(pfPuerto);
             return ERR_VIGILADOR;
         }
         (*temporizador)++;
@@ -39,7 +167,6 @@ int realizarEventos(tCola *buques, tCola *camiones, tMuelle *muelle, tOperacion 
     printf("Finalizada la operación %s", operacion->nombre); // informar/realiza operaciones finalizadas
     operador->puntajeTotal += operacion->puntuacion; // realiza suma de puntuación por cada operación finalizada
     operacion->tiempoDeFinalizacion = *temporizador; // registro tiempo de finalizacion de operacion
-    fclose(pfPuerto);
 
     /**
     --Observaciones [INICIO]--
@@ -67,163 +194,53 @@ int realizarEventos(tCola *buques, tCola *camiones, tMuelle *muelle, tOperacion 
     return TODO_OK;
 }
 
-int vigiladorBuques(tCola *buques, tMuelle *muelle, const unsigned *temporizador, const int *tiempoPorDefault, FILE *pfPuerto, unsigned posUltimoBuque)
+int vigiladorBuques(tCola *buquesEsperando, tCola *buquesArchivo, tMuelle *muelle,
+                     const unsigned *temporizador, const int *tiempoPorDefault)
 {
-    char hallado = 0;
     tBuque buque;
-    crearPila(&buque.codigoContenedores); /// creo pila dinamica para contenedores dentro de buque
 
-    char buffer[TAM_LINEA_BUFF_LECTURA];
-    char bufferCodigo[TAM_LINEA_CODIGO_CONT];
-
-    // primera pasada debo leer hasta llegar a primer buque
-    if(posUltimoBuque == 0)
+    if(colaVacia(buquesArchivo))
     {
-        while(fgets(buffer, TAM_LINEA_BUFF_LECTURA, pfPuerto) && !hallado)
-        {
-            if(strncmp(buffer, "[BUQUES]", 8) == 0)
-            {
-                hallado = 1;
-            }
-        }
-        if(!hallado) // no encontramos BUQUE
-        {
-            return NO_HALLADO;
-        }
-
-    }
-    else
-    {
-        fseek(pfPuerto, posUltimoBuque, SEEK_SET); // uso posUltimoBuque para saltar los ya leidos
+        return FIN_BUQUE;
     }
 
-    fgets(buffer, TAM_LINEA_BUFF_LECTURA, pfPuerto);
-
-    // salgo si no encontro un buque donde debería estar
-    char* ptrBuffer = strchr(buffer, 'B');
-    if(!ptrBuffer)
-    {
-        return NO_HALLADO;
-    }
-
-    // inicio desarmar buffer
-    ptrBuffer = strchr(buffer, '\n');
-    if(!ptrBuffer)
-    {
-        return ERR_LINEA_LARGA;
-    }
-    *ptrBuffer = '\0';
-
-    while((ptrBuffer = strrchr(buffer, ','))!=NULL) // leo tantos C= como halla en archivo excepto el primero (usa ";")
-    {
-        strncpy(bufferCodigo,ptrBuffer+1,TAM_LINEA_CODIGO_CONT);
-        bufferCodigo[TAM_LINEA_CODIGO_CONT]='\0'; // buffer tendra vector de char que ira a pila de codigos de buque actual
-        ponerEnPila(&buque.codigoContenedores, bufferCodigo, strlen(bufferCodigo));
-        *ptrBuffer = '\0';
-    }
-
-    ptrBuffer = strrchr(buffer, ';');   // busco el ultimo C= con ";"
-    strncpy(bufferCodigo,ptrBuffer+3,TAM_LINEA_CODIGO_CONT);; // ptrBuffer+3 salto ;C= y queda en C de C001
-    bufferCodigo[TAM_LINEA_CODIGO_CONT]='\0';
-    ponerEnPila(&buque.codigoContenedores, bufferCodigo, strlen(bufferCodigo)); // ultima carga al fondo de pila y primera queda en tope
-    *ptrBuffer = '\0';
-
-    ptrBuffer = strrchr(buffer, ';');
-    sscanf(ptrBuffer+3,"%u", &buque.tiempoLlegada);
-    //buque.tiempoLlegada = atoi(ptrBuffer+3);
-    *ptrBuffer = '\0';
-
-    strncpy(buque.codigoBuque,buffer,TAM_NOMBRE);
-    buque.codigoBuque[TAM_NOMBRE]='\0';
-    // fin desarmar buffer
+    sacarDeCola(buquesArchivo, &buque, sizeof(buque));
 
     if((buque.tiempoLlegada == *temporizador)) // evaluo si buque llego en temporizador actual
     {
         if(!asignarMuelle(&buque, muelle)) // mando a muelle si no puedo mando a cola de espera BIEN SERIA (buque, puerto.muelle)
         {
-            ponerEnCola(buques, &buque, sizeof(buque)); // cola de espera
+            ponerEnCola(buquesEsperando, &buque, sizeof(buque)); // cola de espera
         }
-        posUltimoBuque = ftell(pfPuerto); // guardo posicion de ultimo leido en archivo para proxima vuelta
-        // si no se leyo nada no se guarda ultima pos (evito saltearlo)
     }
 
-    rewind(pfPuerto);
     return TODO_OK;
 }
 
-int vigiladorCamiones(tCola *camiones, const unsigned *temporizador, FILE *pfPuerto, unsigned posUltimoCamion)
+int vigiladorCamiones(tCola *camionesEsperando, tCola *camionesArchivo, const unsigned *temporizador)
 {
-    char hallado = 0;
     tCamion camion;
-    char buffer[TAM_LINEA_BUFF_LECTURA];
 
-    // primera pasada debo leer hasta llegar a primer camion
-    if(posUltimoCamion == 0)
+    if(colaVacia(camionesArchivo))
     {
-        while(fgets(buffer, TAM_LINEA_BUFF_LECTURA, pfPuerto) && !hallado)
-        {
-            if(strncmp(buffer, "[CAMIONES]", 10) == 0)
-            {
-                hallado = 1;
-            }
-        }
-        if(!hallado) // no encontramos CAMION
-        {
-            return NO_HALLADO;
-        }
-    }
-    else
-    {
-        fseek(pfPuerto, posUltimoCamion, SEEK_SET); // uso posUltimoCamion para saltar los ya leidos
+        return FIN_CAMIONES;
     }
 
-    fgets(buffer, TAM_LINEA_BUFF_LECTURA, pfPuerto);
-
-    // salgo si no encontro un camion donde debería estar
-    char* ptrBuffer = strchr(buffer, 'K');
-    if(!ptrBuffer)
-    {
-        return NO_HALLADO;
-    }
-
-    // inicio desarmar buffer
-    ptrBuffer = strchr(buffer, '\n');
-    if(!ptrBuffer)
-    {
-        return ERR_LINEA_LARGA;
-    }
-    *ptrBuffer = '\0';
-
-    /// Formato esperado: K1;T=0;C=C101
-    // solo manejamos un contenedor, pila no necesaria
-
-    ptrBuffer = strrchr(buffer, ';');
-    strncpy(camion.codigoContenedor,ptrBuffer+3,TAM_LINEA_CODIGO_CONT); // ptrBuffer+3 salto ;C= y queda en C de C001
-    *ptrBuffer = '\0';
-
-    ptrBuffer = strrchr(buffer, ';');
-    sscanf(ptrBuffer+3,"%u", &camion.tiempoLlegada);
-    *ptrBuffer = '\0';
-
-    strncpy(camion.codigoCamion,buffer,TAM_NOMBRE);
-    camion.codigoCamion[TAM_NOMBRE]='\0';
-    // fin desarmar buffer
+    sacarDeCola(camionesArchivo, &camion, sizeof(tCamion));
 
     if(camion.tiempoLlegada == *temporizador) // evaluo si camion llego en temporizador actual
     {
         // solo ponemos en cola para lo demas esperar ACCION de operador
-        ponerEnCola(camiones, &camion, sizeof(camion));
-        posUltimoCamion = ftell(pfPuerto); // guardo posicion de ultimo leido en archivo para proxima vuelta
-        // si no se lleyo nada no se guarda ultima pos (evito saltearlo)
+        ponerEnCola(camionesEsperando, &camion, sizeof(camion));
     }
 
-    rewind(pfPuerto);
     return TODO_OK;
 }
 
 int asignarMuelle(tBuque *buque, tMuelle *muelle)
 {
     return TODO_OK;
+    // revisar que contiene estructura tMuelle y como esta seteado numero de muelles
 }
 
 /**
@@ -277,4 +294,29 @@ int ponerEnCola(tCola *p, const void *d, unsigned cantBytes)
 
     return 1;
 
+}
+
+void crearCola(tCola *p)
+{
+    p->pri = NULL;
+    p->ult = NULL;
+}
+
+int sacarDeCola(tCola *p, void *d, unsigned cantBytes)
+{
+    tNodo *aux = p->pri;
+    if(aux == NULL)
+    return 0;
+    p->pri = aux->sig;
+    memcpy(d, aux->info, minimo(aux->tamInfo, cantBytes));
+    free(aux->info);
+    free(aux);
+    if(p->pri == NULL)
+    p->ult = NULL;
+    return 1;
+}
+
+int colaVacia(const tCola *p)
+{
+    return p->pri == NULL;
 }
