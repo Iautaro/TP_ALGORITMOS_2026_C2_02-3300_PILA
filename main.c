@@ -4,11 +4,9 @@ int main() {
     tPuerto puerto;
     char entrada[10];
     int tiempoAct = 0;
+    int tiempoJornada = 0;
     int puntuacion = 0;
-    tCola buquesArchivos;
-    tCola camionesArchivos;
-    tCola buquesEsperando;
-    tCola camionesEsperando;
+    tOperador operador;
 
     printf("Trabajo Práctico Puerto de Contenedores - Operacion Contrarreloj\n");
 
@@ -21,12 +19,19 @@ int main() {
         return ERR_ARCHIVO;
     }
 
-    crearBuquesyCamiones(&buquesArchivos, &camionesArchivos, fpPuerto);
+    crearBuquesyCamiones(&puerto, fpPuerto);
     fclose(fpPuerto);
 
-    ejecutarOperacion(entrada,&puerto, tiempoAct, puntuacion);
+    ejecutarOperacion(entrada,&puerto, tiempoAct, &tiempoJornada, puntuacion, &operador);
 
     return TODO_OK;
+
+    /**
+    detectarOperacion - buscar y comparar lo escrito para detectar operacion, devuelve codigo que se usa en los otros
+    realizarEventos - pasar tiempo y ver si hay eventos
+    realizarOperacion - realizar cambios al escenario por parte de operacion por EJ ejecutarRES
+    actualizarOperador - 2 lineas de comando que estaban en realizarEventos
+    */
 }
 
 

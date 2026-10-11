@@ -1,14 +1,18 @@
-#define TODO_OK 0
+#include "primitivas.h"
 
 
-int iniciar_jornada(){
+int iniciar_jornada()
+{
   return TODO_OK;
 }
 
-int restar_puntaje(){
+int restar_puntaje()
+{
   return TODO_OK;
 }
 
-void actualizar_ranking(){
-  
+void actualizar_ranking()
+{
+
 }
+
