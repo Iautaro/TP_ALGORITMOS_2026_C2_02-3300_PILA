@@ -18,7 +18,7 @@ int ponerEnCola(tCola *p, const void *d, unsigned cantBytes)
     if(nue == NULL || (nue->info = malloc(cantBytes)) == NULL)
     {
         free(nue);
-        return 0;
+        return ERR_MEMORIA;
     }
 
     memcpy(nue->info, d, cantBytes);
@@ -32,7 +32,7 @@ int ponerEnCola(tCola *p, const void *d, unsigned cantBytes)
 
     p->ult = nue;
 
-    return 1;
+    return TODO_OK;
 }
 
 int ponerEnPila(tPila *p, const void *d, unsigned cantBytes)
@@ -43,7 +43,7 @@ int ponerEnPila(tPila *p, const void *d, unsigned cantBytes)
             (nue->info = malloc(cantBytes)) == NULL)
     {
         free(nue);
-        return 0;
+        return ERR_MEMORIA;
     }
 
     memcpy(nue->info, d, cantBytes);
@@ -51,21 +51,21 @@ int ponerEnPila(tPila *p, const void *d, unsigned cantBytes)
     nue->sig = *p;
     *p = nue;
 
-    return 1;
+    return TODO_OK;
 }
 
 int sacarDeCola(tCola *p, void *d, unsigned cantBytes)
 {
     tNodo *aux = p->pri;
     if(aux == NULL)
-        return 0;
+        return 1;
     p->pri = aux->sig;
     memcpy(d, aux->info, minimo(aux->tamInfo, cantBytes));
     free(aux->info);
     free(aux);
     if(p->pri == NULL)
         p->ult = NULL;
-    return 1;
+    return TODO_OK;
 }
 
 int sacarDePila(tPila *p, void *d, unsigned cantBytes)
@@ -73,12 +73,12 @@ int sacarDePila(tPila *p, void *d, unsigned cantBytes)
     tNodo *aux = *p;
 
     if(aux == NULL)
-        return 0;
+        return 1;
     *p = aux->sig;
     memcpy(d, aux->info, minimo(cantBytes, aux->tamInfo));
     free(aux->info);
     free(aux);
-    return 1;
+    return TODO_OK;
 }
 
 int pilaVacia(const tPila *p)

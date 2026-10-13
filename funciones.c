@@ -70,7 +70,7 @@ int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int tiempoAct, int 
 
     // parsear ->strtok
     // Un comando válido tiene como máximo 3 palabras (ej: DES M1 Z1).
-    char pal[MAX_CANT_PAL];
+    char *pal[MAX_CANT_PAL];
     int cantPal = 0;
 
     // strtok busca la primera palabra
@@ -82,7 +82,7 @@ int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int tiempoAct, int 
         pal[cantPal] = palabra;
         cantPal++;
         palabra = strtok(NULL, " \n"); // dig palabra de misma cadena
-    } /// PREGUNTAR QUE HACE ESTO
+    }
 
     // caso error
     if (cantPal == 0)
@@ -91,7 +91,8 @@ int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int tiempoAct, int 
     }
 
 
-    char *comando = pal; // "DES"
+    char *comando = pal[0]; // "DES"
+
 
     tMuelle *muelleDestino = NULL;
     tZona *zonaDestino = NULL;
@@ -103,7 +104,7 @@ int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int tiempoAct, int 
         return resultado;
     }
 
-    resultado = realizarEventos(puerto, &operacion, operador, &tiempoAct, tiempoJornada);
+    resultado = realizarEventos(puerto, &operacion, &tiempoAct, tiempoJornada);
     if(resultado != TODO_OK)
     {
         return resultado;
@@ -439,28 +440,39 @@ int crearBuquesyCamiones(tPuerto* puerto, FILE *pfPuerto)
 }
 
 int realizarEventos(tPuerto *puerto, tOperacion *operacion,
-                    tOperador *operador, int *temporizador, int *tiempoJornada)
+                    int *temporizador, int *tiempoJornada)
 {
     /// PARA realizarEventos
     unsigned tiempoLimite = 0;
+    int resultado;
 
     tiempoLimite = *temporizador + operacion->tiempoPorDefault;
     if(tiempoLimite > *tiempoJornada) // detección de fin de jornada
     {
-        return FIN_JORNADA;
+        return FIN_JORNADA; // no alcanza el tiempo para ejecutar la operación
     }
 
     while(*temporizador<tiempoLimite)
     {
-        if(vigiladorBuques(puerto, temporizador, &operacion->tiempoPorDefault)!=TODO_OK)// llegada buques
+        if((resultado = vigiladorBuques(puerto, temporizador, &operacion->tiempoPorDefault))!=TODO_OK)// llegada buques
         {
-            return ERR_VIGILADOR;
+            return resultado;
         }
-        if(vigiladorCamiones(puerto, temporizador)!=TODO_OK) // llegada camiones
+        if((resultado = vigiladorCamiones(puerto, temporizador))!=TODO_OK) // llegada camiones
         {
-            return ERR_VIGILADOR;
+            return resultado;
         }
         (*temporizador)++;
+    }
+
+    // caso limite temp == tiempoLim
+    if((resultado = vigiladorBuques(puerto, temporizador, &operacion->tiempoPorDefault))!=TODO_OK)// llegada buques
+    {
+        return resultado;
+    }
+    if((resultado = vigiladorCamiones(puerto, temporizador))!=TODO_OK) // llegada camiones
+    {
+        return resultado;
     }
 
     return TODO_OK;
@@ -491,6 +503,7 @@ int vigiladorBuques(tPuerto *puerto, const int *temporizador, const int *tiempoP
 int vigiladorCamiones(tPuerto *puerto, const int *temporizador)
 {
     tCamion camion;
+    int resultado;
 
     if(colaVacia(&puerto->camionesArchivo))
     {
@@ -502,7 +515,8 @@ int vigiladorCamiones(tPuerto *puerto, const int *temporizador)
     if(camion.tiempoLlegada == *temporizador) // evaluo si camion llego en temporizador actual
     {
         // solo ponemos en cola para lo demas esperar ACCION de operador
-        ponerEnCola(&puerto->camionesEsperando, &camion, sizeof(camion));
+        if((resultado = ponerEnCola(&puerto->camionesEsperando, &camion, sizeof(camion)))!=TODO_OK)
+            return resultado;
     }
 
     return TODO_OK;
@@ -515,7 +529,7 @@ int asignarMuelle(tBuque *buque, tMuelle *muelle)
 }
 
 int detectarOperacion(const char* comando, tZona *zonaOrigen, tZona* zonaDestino, tMuelle *muelleDestino, tOperacion *operacion,
-                      int *cantPal, char *pal, tPuerto *puerto, int tiempoAct, int puntuacion)
+                      int *cantPal, char **pal, tPuerto *puerto, int tiempoAct, int puntuacion)
 {
     if (strcmp(comando, "DES") == 0)
     {
@@ -526,8 +540,8 @@ int detectarOperacion(const char* comando, tZona *zonaOrigen, tZona* zonaDestino
             return validacion;
         }
 
-        char *param1 = &pal[1]; // Muelle -> M1
-        char *param2 = &pal[2]; // Zona -> Z1
+        char *param1 = pal[1]; // Muelle -> M1
+        char *param2 = pal[2]; // Zona -> Z1
 
         if (param1[0] != 'M' || param2[0] != 'Z')
         {
@@ -545,7 +559,6 @@ int detectarOperacion(const char* comando, tZona *zonaOrigen, tZona* zonaDestino
             return ZONA_INCORRECTA; // osea zona incorrecta
 
         operacion->codOperacion = OPERACION_DES;
-
         return TODO_OK;
     }
     else if (strcmp(comando, "REU") == 0)
@@ -556,8 +569,8 @@ int detectarOperacion(const char* comando, tZona *zonaOrigen, tZona* zonaDestino
             return validacion;
         }
 
-        char *param1 = &pal[1];
-        char *param2 = &pal[2];
+        char *param1 = pal[1];
+        char *param2 = pal[2];
 
         if (param1[0] != 'Z' || param2[0] != 'Z')
         {
@@ -579,7 +592,6 @@ int detectarOperacion(const char* comando, tZona *zonaOrigen, tZona* zonaDestino
         }// osea zona incorrecta
 
         operacion->codOperacion = OPERACION_REU;
-
         return TODO_OK;
     }
     else if (strcmp(comando, "ESP") == 0)
@@ -590,6 +602,9 @@ int detectarOperacion(const char* comando, tZona *zonaOrigen, tZona* zonaDestino
         {
             return validacion;
         }
+
+        operacion->codOperacion = OPERACION_ESP; /// es de fantasia porque
+        return TODO_OK;                         /// ya paso tiempo en realizarEventos
     }
     else if(strcmp(comando, "VER") == 0)
     {
@@ -668,17 +683,32 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
     break;
 
     case OPERACION_ENT:
-
     {
-        ejecutarVER(puerto, tiempoAct, puntuacion);
+        ejecutarENT(puerto);
     }
 
     break;
 
+    case OPERACION_ESP:
+    {
+        ejecutarESP(puerto, tiempoAct, 2); /// OJO hardcodeado luego pasar a variable de configu
+    }
+
+    break;
     default:
     {
         printf("Operacion no hallada");
     }
     }
+    return TODO_OK;
+}
+
+void ejecutarESP()
+{
+
+}
+
+int ejecutarENT( tPuerto* puerto)
+{
     return TODO_OK;
 }

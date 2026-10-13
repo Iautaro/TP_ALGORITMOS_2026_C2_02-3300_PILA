@@ -74,6 +74,7 @@ int ejecutarDES( tMuelle *muelle, tZona *zonaDest, tContenedor *contenedor_desca
 int ejecutarENT( tPuerto* puerto);
 int ejecutarREU( tZona* zonaOrigen, tZona* zonaDest, tContenedor* contenedor_desc);
 void ejecutarVER( tPuerto* puerto, int tiempoActual, int puntuacionProv);
+void ejecutarESP();
 
 int crearBuquesyCamiones(tPuerto* puerto, FILE *pfPuerto);
 int parsearBuques(tBuque *buque, char *buffer, char* bufferCodigo);
@@ -84,9 +85,9 @@ int vigiladorCamiones(tPuerto *puerto, const int *temporizador);
 int asignarMuelle(tBuque *buque, tMuelle *muelle);
 
 int detectarOperacion(const char* comando, tZona *zonaOrigen, tZona* zonaDestino, tMuelle *muelleDestino, tOperacion *operacion,
-                        int *cantPal, char *pal, tPuerto *puerto, int tiempoAct, int puntuacion);
+                        int *cantPal, char **pal, tPuerto *puerto, int tiempoAct, int puntuacion);
 int realizarEventos(tPuerto *puerto, tOperacion *operacion,
-                    tOperador *operador, int *temporizador, int *tiempoJornada);
+                    int *temporizador, int *tiempoJornada);
 int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDestino, tMuelle *muelleDestino,
                       tPuerto *puerto, int tiempoAct, int puntuacion);
 

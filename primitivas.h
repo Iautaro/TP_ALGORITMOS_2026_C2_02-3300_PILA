@@ -56,6 +56,7 @@
 #define OPERACION_DES 251
 #define OPERACION_ENT 252
 #define OPERACION_REU 253
+#define OPERACION_ESP 254
 
 #define minimo( X , Y ) ( ( X ) <= ( Y ) ? ( X ) : ( Y ) )
 
