@@ -707,8 +707,36 @@ void ejecutarESP()
 {
 
 }
-
+/*
 int ejecutarENT( tPuerto* puerto)
 {
+    return TODO_OK;
+}
+*/
+
+int ejecutarENT( tPuerto* puerto, tContenedor* contenedorDesc, tCamion *camionAtendido)
+{
+    if( puerto->camionesEsperando.pri  == NULL ) // verifico existencia de camiones
+    {return NO_HAY_CAMIONES;}
+
+    tCamion *camionFrente = (tCamion*)puerto->camionesEsperando.pri->info;// contenedor solicitado por camion atendido
+
+    tZona *zonaContenedor = buscarZonaTope(puerto->zonas, camionFrente->codContenedorSolic); // busco zona donde este contenedor ej C101
+    if( zonaContenedor == NULL)
+    {
+        return CONTENEDOR_NO_DISPONIBLE;
+    }
+
+    if( desapilar(&zonaContenedor->contenedores, contenedorDesc, sizeof(tContenedor)) !=  TODO_OK )
+    {
+        return ERROR_PILA;
+    }
+    zonaContenedor->cantActual--; // le saco un contenedor
+    if( desacolar(&puerto->camionesEsperando, camionAtendido, sizeof(tCamion)) != TODO_OK )
+    {
+        return ERROR_PILA;
+    }
+
+
     return TODO_OK;
 }

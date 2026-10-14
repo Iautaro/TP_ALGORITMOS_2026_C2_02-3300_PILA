@@ -71,7 +71,8 @@ tMuelle* buscarMuelle(tPuerto *puerto, const char *idBuscado) ;
 
 int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int tiempoAct, int *tiempoJornada, int puntuacion, tOperador *operador);
 int ejecutarDES( tMuelle *muelle, tZona *zonaDest, tContenedor *contenedor_descarga); // ejecuta descarga
-int ejecutarENT( tPuerto* puerto);
+//int ejecutarENT( tPuerto* puerto);
+int ejecutarENT( tPuerto* puerto, tContenedor* contenedorDesc, tCamion *camionAtendido);
 int ejecutarREU( tZona* zonaOrigen, tZona* zonaDest, tContenedor* contenedor_desc);
 void ejecutarVER( tPuerto* puerto, int tiempoActual, int puntuacionProv);
 void ejecutarESP();
