@@ -98,6 +98,7 @@ int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int tiempoAct, int 
 //int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto);
 int colaVacia( const tCola *c);
 int desacolar( tCola *c, void *info, unsigned tam);
+int acolar( tCola *c, const void *info, unsigned tam);
 int pilaLlena( const tPila *p, unsigned tam);
 int apilar( tPila *p, const void *d, unsigned tamInfo);
 int desapilar( tPila *p,  void *d, unsigned tamInfo);

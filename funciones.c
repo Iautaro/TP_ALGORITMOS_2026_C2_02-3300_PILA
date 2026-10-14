@@ -50,6 +50,38 @@ int desacolar( tCola *c, void *info, unsigned tam)
 
     return TODO_OK;
 }
+
+int acolar( tCola *c, const void *info, unsigned tam){
+    tNodo *nodoAux = malloc(sizeof(tNodo));
+    if( nodoAux == NULL)
+    {
+        return ERROR_PILA;
+    }
+    nodoAux->info = malloc(tam);
+    if(nodoAux->info == NULL)
+    {
+        free(nodoAux);
+        return ERROR_PILA;
+    }
+    memcpy(nodoAux->info, info, tam);
+    nodoAux->tamInfo = tam;
+    nodoAux->sig = NULL;
+
+    if( c->pri == NULL )
+    {
+        c->pri = nodoAux;
+        c->ult = nodoAux;
+    } else{
+        c->ult->sig = nodoAux;
+        c->ult = nodoAux;
+    }
+
+
+
+    return TODO_OK;
+}
+
+
 /*
 int pilaLlena( const tPila *p, unsigned tam)
 {
