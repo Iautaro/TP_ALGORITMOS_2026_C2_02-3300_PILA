@@ -15,7 +15,7 @@ int main() {
     mostrar_operaciones();
     scanf("%s", &entrada);
     tPuerto puerto;
-    ejecutarOperacion(entrada,&puerto);
+    //ejecutarOperacion(entrada,&puerto);
     return 0;
 }
 
