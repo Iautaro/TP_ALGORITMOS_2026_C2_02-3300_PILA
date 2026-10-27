@@ -12,7 +12,8 @@ int cmpTiempo(const void* a, const void* b)
     return k1->tiempoLlegada - k2->tiempoLlegada;
 }
 
-int main() {
+int main()
+{
     printf("Trabajo Practico Puerto de Contenedores - Operacion Contrarreloj\n\n\n");
 
     // Variables para resumen

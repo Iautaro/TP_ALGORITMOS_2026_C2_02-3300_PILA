@@ -31,7 +31,18 @@
 		<Compiler>
 			<Add option="-Wall" />
 		</Compiler>
+		<Unit filename="funciones.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="funciones.h" />
 		<Unit filename="main.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="primitivas.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="primitivas.h" />
+		<Unit filename="primitivastemp.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Extensions>
