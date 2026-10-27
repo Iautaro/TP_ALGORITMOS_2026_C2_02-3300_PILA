@@ -130,4 +130,16 @@ int apilar( tPila *p, const void *d, unsigned tamInfo)
     return TODO_OK;
 }
 
+void vaciarCola(tCola *p)
+{
+    while(p->pri)
+    {
+        tNodo* aux = p->pri;
+        p->pri = aux->sig;
+        free(aux->info);
+        free(aux);
+    }
+    p->ult = NULL;
+}
+
 

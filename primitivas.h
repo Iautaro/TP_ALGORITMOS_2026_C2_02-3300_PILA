@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <time.h>
 
 #define TAM_NOMBRE 100
 #define TAM_COD_MUELLE 4
@@ -12,6 +13,9 @@
 #define TAM_NOM_CONTENEDOR 5
 #define TAM_COD_ZONA 4
 #define CANT_MUELLES
+#define MAX_LINEA_CONFIG 35
+#define MAX_CODIGO 12
+#define CANT_COMANDOS 5
 
 #define TODO_OK 0
 #define MUELLE_VACIO 1
@@ -47,10 +51,13 @@
 #define ERR_ARCHIVO 202
 #define ERR_LINEA_LARGA 203
 #define ERR_MEMORIA 204
-#define FIN_JORNADA 205
-#define NO_HALLADO 206
-#define FIN_CAMIONES 207
-#define FIN_BUQUE 208
+#define ERR_PARAM 205
+#define FIN_JORNADA 206
+#define NO_HALLADO 207
+#define FIN_CAMIONES 208
+#define FIN_BUQUE 209
+#define NO_HAY_CAMIONES 210
+#define CONTENEDOR_NO_DISPONIBLE 211
 
 #define OPERACION_VER 250
 #define OPERACION_DES 251
@@ -86,5 +93,6 @@ int colaVacia( const tCola *c);
 int desacolar( tCola *c, void *info, unsigned tam);
 int apilar( tPila *p, const void *d, unsigned tamInfo);
 int desapilar( tPila *p,  void *d, unsigned tamInfo);
+void vaciarCola(tCola *p);
 
 #endif // PRIMITIVAS_H_INCLUDED

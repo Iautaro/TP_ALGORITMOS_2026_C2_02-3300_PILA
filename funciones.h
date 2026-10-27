@@ -61,6 +61,48 @@ typedef struct
     char codigoContenedor[TAM_NOMBRE];
 } tCamion;
 
+typedef struct
+{
+    unsigned contenedoresEntregados;
+    unsigned buquesDescargados;
+    unsigned camionesPendientes;
+    unsigned reorganizaciones;
+    unsigned tiempoUtilizado;
+    unsigned puntuacionFinal;
+} tResumen;
+
+/* --------------- hecho en la rama estructura_main previo a la fusion (empieza aca) --------------- */
+// Variables de configuracion
+typedef struct
+{
+    unsigned duracionJornadaMinutos;
+    unsigned cantidadMuelles;
+    unsigned cantidadZonasAlmacenamiento;
+    unsigned capacidadPila;
+    unsigned maximoBuques;
+    unsigned maximoContenedoresPorBuque;
+    unsigned maximoCamiones;
+    unsigned tiempoDescargaContenedor;
+    unsigned tiempoReubicacionContenedor;
+    unsigned tiempoCargaCamion;
+} tConfig;
+
+/// Puntero a funcion
+// Comparacion de enteros y de tiempos de llegada de camiones
+typedef int (*Cmp)(const void* a, const void* b);
+
+// funciones usadas en main.c
+int leerConfiguracion(FILE* arch, tConfig* configuracion);
+FILE* abrirOCrearArchivo(char* nomArch);
+int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuracion, tCola* contenedores, Cmp cmpInt, Cmp cmpTiempo);
+void ingresarTexto(int max, char* texto);
+void mostrarOperaciones();
+char verificarParametrosOperacion(char* param1, char* param2, char tipoParam1);
+char validarOperacion(char* operacion);
+
+/* --------------- hecho en la rama estructura_main previo a la fusion (termina aca) --------------- */
+
+int inicializarResumen(tResumen* res);
 
 void mostrar_operaciones();
 
@@ -69,7 +111,7 @@ tZona* buscarZona(tPuerto *puerto, const char *idBuscado);
 tZona* buscarZonaTope(tLista zonas, const char *codContBuscado);
 tMuelle* buscarMuelle(tPuerto *puerto, const char *idBuscado) ;
 
-int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int tiempoAct, int *tiempoJornada, int puntuacion, tOperador *operador);
+int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int tiempoAct, unsigned int *tiempoJornada, int puntuacion, tOperador *operador);
 int ejecutarDES( tMuelle *muelle, tZona *zonaDest, tContenedor *contenedor_descarga); // ejecuta descarga
 //int ejecutarENT( tPuerto* puerto);
 int ejecutarENT( tPuerto* puerto, tContenedor* contenedorDesc, tCamion *camionAtendido);
@@ -86,9 +128,9 @@ int vigiladorCamiones(tPuerto *puerto, const int *temporizador);
 int asignarMuelle(tBuque *buque, tMuelle *muelle);
 
 int detectarOperacion(const char* comando, tZona *zonaOrigen, tZona* zonaDestino, tMuelle *muelleDestino, tOperacion *operacion,
-                        int *cantPal, char **pal, tPuerto *puerto, int tiempoAct, int puntuacion);
+                        tPuerto *puerto, int tiempoAct, int puntuacion);
 int realizarEventos(tPuerto *puerto, tOperacion *operacion,
-                    int *temporizador, int *tiempoJornada);
+                    int *temporizador, unsigned int *tiempoJornada);
 int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDestino, tMuelle *muelleDestino,
                       tPuerto *puerto, int tiempoAct, int puntuacion);
 
