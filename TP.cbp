@@ -31,13 +31,25 @@
 		<Compiler>
 			<Add option="-Wall" />
 		</Compiler>
+		<Unit filename="arbol.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="arbol.h" />
 		<Unit filename="funciones.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="funciones.h" />
+		<Unit filename="indice_operador.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="indice_operador.h" />
 		<Unit filename="main.c">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="operador.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="operador.h" />
 		<Unit filename="primitivas.c">
 			<Option compilerVar="CC" />
 		</Unit>

@@ -2,6 +2,9 @@
 #define FUNCIONES_H_INCLUDED
 
 #include "primitivas.h"
+#include "arbol.h"
+#include "indice_operador.h"
+#include "operador.h"
 
 typedef struct{
     char codigoBuque[TAM_NOMBRE];
@@ -50,12 +53,6 @@ typedef struct
 
 typedef struct
 {
-    char nombre[TAM_NOMBRE+1];
-    int puntajeTotal;
-} tOperador;
-
-typedef struct
-{
     char codigoCamion[TAM_NOMBRE];
     int tiempoLlegada;
     char codigoContenedor[TAM_NOMBRE];
@@ -93,7 +90,7 @@ typedef int (*Cmp)(const void* a, const void* b);
 
 // funciones usadas en main.c
 int leerConfiguracion(FILE* arch, tConfig* configuracion);
-FILE* abrirOCrearArchivo(char* nomArch);
+int abrirOCrearArchivo(const char* nomArch, FILE *arch);
 int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuracion, tCola* contenedores, Cmp cmpInt, Cmp cmpTiempo);
 void ingresarTexto(int max, char* texto);
 void mostrarOperaciones();
@@ -113,8 +110,7 @@ tMuelle* buscarMuelle(tPuerto *puerto, const char *idBuscado) ;
 
 int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int tiempoAct, unsigned int *tiempoJornada, int puntuacion, tOperador *operador);
 int ejecutarDES( tMuelle *muelle, tZona *zonaDest, tContenedor *contenedor_descarga); // ejecuta descarga
-//int ejecutarENT( tPuerto* puerto);
-int ejecutarENT( tPuerto* puerto, tContenedor* contenedorDesc, tCamion *camionAtendido);
+int ejecutarENT( tPuerto* puerto);
 int ejecutarREU( tZona* zonaOrigen, tZona* zonaDest, tContenedor* contenedor_desc);
 void ejecutarVER( tPuerto* puerto, int tiempoActual, int puntuacionProv);
 void ejecutarESP();
@@ -134,8 +130,8 @@ int realizarEventos(tPuerto *puerto, tOperacion *operacion,
 int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDestino, tMuelle *muelleDestino,
                       tPuerto *puerto, int tiempoAct, int puntuacion);
 
-
-/// Parte Nic (header fin)
+int eventoOperadorIni(FILE *fpOperador, FILE *fpJornada, FILE *fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador);
+int eventoOperadorFin(FILE *fpOperador, FILE *fpJornada, FILE *fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador);
 
 
 #endif // FUNCIONES_H_INCLUDED

@@ -1,14 +1,53 @@
 #include "primitivas.h"
 
-void crearCola(tCola *p)
-{
-    p->pri = NULL;
-    p->ult = NULL;
-}
+
 
 void crearPila(tPila *p)
 {
     *p = NULL;
+}
+
+int ponerEnPila(tPila *p, const void *d, unsigned cantBytes)
+{
+    tNodo *nue;
+
+    if((nue = (tNodo *)malloc(sizeof(tNodo))) == NULL ||
+            (nue->info = malloc(cantBytes)) == NULL)
+    {
+        free(nue);
+        return ERR_MEMORIA;
+    }
+
+    memcpy(nue->info, d, cantBytes);
+    nue->tamInfo = cantBytes;
+    nue->sig = *p;
+    *p = nue;
+
+    return TODO_OK;
+}
+
+int sacarDePila(tPila *p, void *d, unsigned cantBytes)
+{
+    tNodo *aux = *p;
+
+    if(aux == NULL)
+        return 1;
+    *p = aux->sig;
+    memcpy(d, aux->info, minimo(cantBytes, aux->tamInfo));
+    free(aux->info);
+    free(aux);
+    return TODO_OK;
+}
+
+int pilaVacia(const tPila *p)
+{
+    return *p == NULL;
+}
+
+void crearCola(tCola *p)
+{
+    p->pri = NULL;
+    p->ult = NULL;
 }
 
 int ponerEnCola(tCola *p, const void *d, unsigned cantBytes)
@@ -35,23 +74,12 @@ int ponerEnCola(tCola *p, const void *d, unsigned cantBytes)
     return TODO_OK;
 }
 
-int ponerEnPila(tPila *p, const void *d, unsigned cantBytes)
+int verPrimeroCola(const tCola *p, void *d, unsigned cantBytes)
 {
-    tNodo *nue;
-
-    if((nue = (tNodo *)malloc(sizeof(tNodo))) == NULL ||
-            (nue->info = malloc(cantBytes)) == NULL)
-    {
-        free(nue);
-        return ERR_MEMORIA;
-    }
-
-    memcpy(nue->info, d, cantBytes);
-    nue->tamInfo = cantBytes;
-    nue->sig = *p;
-    *p = nue;
-
-    return TODO_OK;
+    if(p->pri == NULL)
+        return 0;
+    memcpy(d, p->pri->info, minimo(cantBytes, p->pri->tamInfo));
+    return 1;
 }
 
 int sacarDeCola(tCola *p, void *d, unsigned cantBytes)
@@ -68,28 +96,24 @@ int sacarDeCola(tCola *p, void *d, unsigned cantBytes)
     return TODO_OK;
 }
 
-int sacarDePila(tPila *p, void *d, unsigned cantBytes)
-{
-    tNodo *aux = *p;
-
-    if(aux == NULL)
-        return 1;
-    *p = aux->sig;
-    memcpy(d, aux->info, minimo(cantBytes, aux->tamInfo));
-    free(aux->info);
-    free(aux);
-    return TODO_OK;
-}
-
-int pilaVacia(const tPila *p)
-{
-        return *p == NULL;
-}
-
 int colaVacia(const tCola *c)
 {
     return c->pri == NULL;
 }
+
+
+void vaciarCola(tCola *p)
+{
+    while(p->pri)
+    {
+        tNodo* aux = p->pri;
+        p->pri = aux->sig;
+        free(aux->info);
+        free(aux);
+    }
+    p->ult = NULL;
+}
+
 
 int desacolar( tCola *c, void *info, unsigned tam)
 {
@@ -129,17 +153,4 @@ int apilar( tPila *p, const void *d, unsigned tamInfo)
     *p = nuevoNodo;
     return TODO_OK;
 }
-
-void vaciarCola(tCola *p)
-{
-    while(p->pri)
-    {
-        tNodo* aux = p->pri;
-        p->pri = aux->sig;
-        free(aux->info);
-        free(aux);
-    }
-    p->ult = NULL;
-}
-
 

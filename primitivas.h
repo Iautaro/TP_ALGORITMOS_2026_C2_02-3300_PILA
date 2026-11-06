@@ -53,11 +53,14 @@
 #define ERR_MEMORIA 204
 #define ERR_PARAM 205
 #define FIN_JORNADA 206
-#define NO_HALLADO 207
+#define NO_HALLADO 0
 #define FIN_CAMIONES 208
 #define FIN_BUQUE 209
 #define NO_HAY_CAMIONES 210
 #define CONTENEDOR_NO_DISPONIBLE 211
+
+#define ARCH_APERTURA 212
+#define ARCH_CREACION 213
 
 #define OPERACION_VER 250
 #define OPERACION_DES 251
@@ -82,17 +85,16 @@ typedef tNodo* tPila;
 typedef tNodo* tLista; // a prim nodo
 
 void crearCola(tCola *p);
-void crearPila(tPila *p);
 int ponerEnCola(tCola *p, const void *d, unsigned cantBytes);
-int ponerEnPila(tPila *p, const void *d, unsigned cantBytes);
 int sacarDeCola(tCola *p, void *d, unsigned cantBytes);
+int verPrimeroCola(const tCola *p, void *d, unsigned cantBytes);
+int colaVacia( const tCola *c);
+void vaciarCola(tCola *p);
+
+void crearPila(tPila *p);
+int ponerEnPila(tPila *p, const void *d, unsigned cantBytes);
 int sacarDePila(tPila *p, void *d, unsigned cantBytes);
 int pilaLlena( const tPila *p, unsigned tam);
 int pilaVacia(const tPila *p);
-int colaVacia( const tCola *c);
-int desacolar( tCola *c, void *info, unsigned tam);
-int apilar( tPila *p, const void *d, unsigned tamInfo);
-int desapilar( tPila *p,  void *d, unsigned tamInfo);
-void vaciarCola(tCola *p);
 
 #endif // PRIMITIVAS_H_INCLUDED
