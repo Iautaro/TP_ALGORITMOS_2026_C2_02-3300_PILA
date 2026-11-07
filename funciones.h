@@ -55,7 +55,7 @@ typedef struct
 {
     char codigoCamion[TAM_NOMBRE];
     int tiempoLlegada;
-    char codigoContenedor[TAM_NOMBRE];
+    char codigoContenedor[TAM_NOM_CONTENEDOR];
 } tCamion;
 
 typedef struct
@@ -90,7 +90,7 @@ typedef int (*Cmp)(const void* a, const void* b);
 
 // funciones usadas en main.c
 int leerConfiguracion(FILE* arch, tConfig* configuracion);
-int abrirOCrearArchivo(const char* nomArch, FILE *arch);
+int abrirOCrearArchivo(const char* nomArch, FILE **arch);
 int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuracion, tCola* contenedores, Cmp cmpInt, Cmp cmpTiempo);
 void ingresarTexto(int max, char* texto);
 void mostrarOperaciones();

@@ -100,12 +100,14 @@ int leerConfiguracion(FILE* arch, tConfig* configuracion)
 
 /// Apertura del archivo o creacion del archivo si no existe
 // modifico esta funcion para poder observar si creo o abrio
-int abrirOCrearArchivo(const char* nomArch, FILE *arch)
+int abrirOCrearArchivo(const char* nomArch, FILE **arch)
 {
-    arch = fopen(nomArch, "r+t");
-    if (!arch)
+    *arch = fopen(nomArch, "r+t");
+    if (!*arch)
     {
-        arch = fopen(nomArch, "w+t");
+        *arch = fopen(nomArch, "w+t");
+        if(!*arch)
+            return ERR_ARCHIVO;
         return ARCH_CREACION;
     }
     return ARCH_APERTURA;
@@ -128,7 +130,6 @@ int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuraci
         printf("Error al asignar memoria para guardar tiempos de llegada de buques\n");
         return ERR_MEMORIA;
     }
-
     // Variables para loops
     int i;
     int b;
@@ -157,14 +158,13 @@ int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuraci
         // esto lo que hace es, en la lista de tiempos de llegada de los buques, genera un numero entre 0 y el 90% de la duracion
         // si la duracion es 10, genera un numero entre 0 y 9, para evitar acumulacion de buques al final y tener cierto margen
         // si queremos que tienda mas a cero, se puede hacer con una funcion logaritmica o similar
-        *(tiemposBuques + i*sizeof(int)) = rand() % (int)((configuracion->duracionJornadaMinutos + 1) * 0.9);
+        *(tiemposBuques + i) = rand() % (int)((configuracion->duracionJornadaMinutos + 1) * 0.9);
     }
     for(i = 0; i < configuracion->maximoCamiones; i++)
     {
         // aca lo mismo pero es el 100% de la duracion el maximo. Aplica a los tiempos de llegada de los camiones
-        (camiones + i * sizeof(camiones))->tiempoLlegada = rand() % (int)(configuracion->duracionJornadaMinutos + 1);
+        (camiones + i)->tiempoLlegada = rand() % (int)(configuracion->duracionJornadaMinutos + 1);
     }
-
     // Ordenamiento de los tiempos de llegada de los buques
     qsort(tiemposBuques, configuracion->maximoBuques, sizeof(int), cmpInt);
 
@@ -189,9 +189,10 @@ int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuraci
     // Loop for para registrar los buques con sus contenedores en el archivo
     // Las condiciones revisan que no haya mas buques que los aclarados en config.txt y que no haya mas contenedores que los establecidos en la variable de antes
     // No se suma la variable de los contenedores en cada pasada, solamente se suma al registrar los contenedores (el loop de adentro)
+
     for(b = 1; b <= configuracion->maximoBuques && contenedoresTotales < cantContenedores; b++)
     {
-        fprintf(archPuerto, "B%03d;T=%d;C=%d01", b, *(tiemposBuques + i), b);
+        fprintf(archPuerto, "B%03d;T=%d;C=%d01", b, *(tiemposBuques + b - 1), b);
 
         // Loop for para registrar los contenedores de cada buque
         // Las condiciones revisan que no haya mas contenedores por buque que los aclarados en config.txt y que no haya mas contenedores que los establecidos en la variable de antes
@@ -202,12 +203,13 @@ int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuraci
             snprintf(nroCont, TAM_NOM_CONTENEDOR, "C%d%02d", b, c);
             fprintf(archPuerto, ",C%d%02d", b, c);
             // Agrego los nombres de los contenedores a una cola para luego desacolar con los camiones
-            if(ponerEnCola(contenedores, nroCont, strlen(nroCont)) != TODO_OK)
+            if(ponerEnCola(contenedores, nroCont, TAM_NOM_CONTENEDOR) != TODO_OK)
             {
                 printf("Error al asignar memoria para cola de contenedores para puerto.txt\n");
                 return ERR_MEMORIA;
             }
         }
+        fprintf(archPuerto, "\n");
     }
 
     // Saco los contenedores de la cola y los guardo en el campo de contenedor de cada camion del vector de camiones
@@ -215,28 +217,28 @@ int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuraci
     i = 0;
     while(!colaVacia(contenedores))
     {
-        if(sacarDeCola(contenedores, (camiones + i * sizeof(tCamion))->codigoContenedor, TAM_NOM_CONTENEDOR) != TODO_OK)
+        if(sacarDeCola(contenedores, (camiones + i)->codigoContenedor, TAM_NOM_CONTENEDOR) != TODO_OK)
         {
             printf("Error al asignar memoria para sacar de cola\n");
             return ERR_MEMORIA;
         }
         i++;
     }
-
     // Ordenar el vector de camiones por tiempo de llegada
     qsort(camiones, configuracion->maximoCamiones, sizeof(int), cmpTiempo);
 
     // Registrar los camiones
     fprintf(archPuerto, "\n");
-    fprintf(archPuerto, "\n");
     fprintf(archPuerto, "[CAMIONES]\n");
     for(k = 1; k <= configuracion->maximoCamiones; k++)
     {
-        fprintf(archPuerto, "K%03d;T=%d;C=%s\n", k, (camiones + i * sizeof(tCamion))->tiempoLlegada, (camiones + i * sizeof(tCamion))->codigoContenedor);
+        fprintf(archPuerto, "K%03d;T=%d;C=%s\n", k, (camiones + k - 1)->tiempoLlegada, (camiones + k - 1)->codigoContenedor);
     }
 
     free(tiemposBuques);
     free(camiones);
+    fflush(archPuerto);
+    rewind(archPuerto);
     crearBuquesyCamiones(puerto, archPuerto);
     return TODO_OK;
 }
@@ -1017,20 +1019,21 @@ int eventoOperadorIni(FILE *fpOperador, FILE *fpJornada, FILE *fpIndice, tOperad
     int modoAperturaOperador = 0;
     int modoAperturaIndice = 0;
 
-    modoAperturaOperador = abrirOCrearArchivo("operadores.txt", fpOperador);
+    modoAperturaOperador = abrirOCrearArchivo("operadores.txt", &fpOperador);
     if(!fpOperador)
     {
+        printf("\n%d\n", modoAperturaOperador);
         puts("Error al abrir archivo de operadores.\n");
         return ERR_ARCHIVO;
     }
-    abrirOCrearArchivo("jornadas.txt", fpJornada);
+    abrirOCrearArchivo("jornadas.txt", &fpJornada);
     if(!fpJornada)
     {
         puts("Error al abrir archivo de jornadas.\n");
         fclose(fpOperador);
         return ERR_ARCHIVO;
     }
-    modoAperturaIndice = abrirOCrearArchivo("operadores.idx", fpIndice);
+    modoAperturaIndice = abrirOCrearArchivo("operadores.idx", &fpIndice);
     if(!fpIndice)
     {
         puts("Error al abrir archivo indice.\n");

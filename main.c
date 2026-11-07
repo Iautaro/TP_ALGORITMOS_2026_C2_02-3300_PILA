@@ -50,18 +50,26 @@ int main()
     err = leerConfiguracion(archConfig, &configuracion);
     fclose(archConfig);
     if (err != TODO_OK)
+    {
+        printf("Error al leer las configuraciones\n");
         return err;
+    }
 
     // Apertura y/o creacion de archivo de ranking
-    abrirOCrearArchivo("ranking.txt", archRanking);
-    if(!archRanking)
+    err = abrirOCrearArchivo("ranking.txt", &archRanking);
+    if(err == ERR_ARCHIVO)
     {
         printf("Error al abrir archivo de ranking\n");
-        return ERR_ARCHIVO;
+        return err;
+    }
+    else
+    {
+        if(err == ARCH_CREACION)
+            printf("ranking.txt creado exitosamente\n");
     }
 
     // Creacion y preparacion de archivo puerto.txt
-    FILE* archPuerto = fopen("puerto.txt", "wt");
+    FILE* archPuerto = fopen("puerto.txt", "w+t");
     if(!archPuerto)
     {
         printf("Error al crear archivo puerto.txt\n");
@@ -76,7 +84,6 @@ int main()
         return err;
     }
     fclose(archPuerto);
-
     /// RESPUESTA(20) -> se crea evento operador inicial y final para manejar arboles y sesion
     /// IMPORTANTE(20) -> el indice tiene mismos campos que el operador, nos queda doble clave para el indice, se puede reducir? o ampliamos
     ///                   caracteristicas de operador para que no quede igual indice y archivo?
@@ -112,7 +119,7 @@ int main()
     int resultadoOperacion = TODO_OK;
 
     /// While principal
-    while(varsResumen.tiempoUtilizado < configuracion.duracionJornadaMinutos && resultadoOperacion != TODO_OK)
+    while(varsResumen.tiempoUtilizado < configuracion.duracionJornadaMinutos && resultadoOperacion == TODO_OK)
     {
         // Mostrar los codigos y sus sintaxis
         mostrarOperaciones();
