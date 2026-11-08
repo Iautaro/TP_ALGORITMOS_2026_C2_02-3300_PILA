@@ -24,6 +24,7 @@
 #define ERROR_PILA 4
 #define ZONA_INCORRECTA -3
 #define MUELLE_INCORRECTO -4
+#define PUERTO_LLENO 5
 
 #define ERR -1
 
@@ -68,6 +69,11 @@
 #define OPERACION_REU 253
 #define OPERACION_ESP 254
 
+#define PILA_VACIA 1
+#define COLA_VACIA 1
+#define LISTA_LLENA 1
+#define LISTA_VACIA 2
+
 #define minimo( X , Y ) ( ( X ) <= ( Y ) ? ( X ) : ( Y ) )
 
 typedef struct sNodo{
@@ -84,17 +90,38 @@ typedef struct{
 typedef tNodo* tPila;
 typedef tNodo* tLista; // a prim nodo
 
+typedef void (*Accion)(const void* a);
+typedef int (*Cmp)(const void* a, const void* b);
+
+
 void crearCola(tCola *p);
 int ponerEnCola(tCola *p, const void *d, unsigned cantBytes);
 int sacarDeCola(tCola *p, void *d, unsigned cantBytes);
 int verPrimeroCola(const tCola *p, void *d, unsigned cantBytes);
 int colaVacia( const tCola *c);
 void vaciarCola(tCola *p);
+int recorrerHastaXCola(const tCola *p, Accion accion, unsigned cant);
+int contarCola(tCola *p);
 
 void crearPila(tPila *p);
 int ponerEnPila(tPila *p, const void *d, unsigned cantBytes);
 int sacarDePila(tPila *p, void *d, unsigned cantBytes);
 int pilaLlena( const tPila *p, unsigned tam);
 int pilaVacia(const tPila *p);
+int recorrerPila(const tPila* p, Accion accion);
+int verTope(const tPila* p, void* dato, unsigned cantBytes);
+
+void crearLista(tLista* p);
+int listaVacia(const tLista* p);
+int listaLlena(const tLista* p, unsigned cantBytes);
+void vaciarLista(tLista* p);
+int ponerAlComienzo(tLista* p, void* dato, unsigned cantBytes);
+int sacarPrimeroLista(tLista* p, void* dato, unsigned cantBytes);
+int verPrimeroLista(const tLista* p, void* dato, unsigned cantBytes);
+int ponerAlFinal(tLista* p, const void* dato, unsigned cantBytes);
+int sacarUltimoLista(tLista* p, void* dato, unsigned cantBytes);
+int verUltimoLista(const tLista* p, void* dato, unsigned cantBytes);
+int recorrerLista(const tLista* p, Accion accion);
+void* buscarLista(const tLista* p, const void* dato, Cmp cmp);
 
 #endif // PRIMITIVAS_H_INCLUDED

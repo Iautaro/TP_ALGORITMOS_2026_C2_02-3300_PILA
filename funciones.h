@@ -84,9 +84,7 @@ typedef struct
     unsigned tiempoCargaCamion;
 } tConfig;
 
-/// Puntero a funcion
-// Comparacion de enteros y de tiempos de llegada de camiones
-typedef int (*Cmp)(const void* a, const void* b);
+
 
 // funciones usadas en main.c
 int leerConfiguracion(FILE* arch, tConfig* configuracion);
@@ -121,7 +119,7 @@ int parsearCamiones(tCamion *camion, char *buffer);
 
 int vigiladorBuques(tPuerto *puerto, const int *temporizador, const int *tiempoPorDefault);
 int vigiladorCamiones(tPuerto *puerto, const int *temporizador);
-int asignarMuelle(tBuque *buque, tMuelle *muelle);
+int asignarMuelle(tBuque *buque, tMuelle *muelle, int cantMuelles);
 
 int detectarOperacion(const char* comando, tZona *zonaOrigen, tZona* zonaDestino, tMuelle *muelleDestino, tOperacion *operacion,
                         tPuerto *puerto, int tiempoAct, int puntuacion);
@@ -133,5 +131,11 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
 int eventoOperadorIni(FILE *fpOperador, FILE *fpJornada, FILE *fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador);
 int eventoOperadorFin(FILE *fpOperador, FILE *fpJornada, FILE *fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador);
 
+void printCamion(const void* a);
+void printZona(const void* a);
+void printCont(const void* a);
+
+int cmpZona(const void* a, const void* b);
+int cmpContEnZona(const void* a, const void* b);
 
 #endif // FUNCIONES_H_INCLUDED
