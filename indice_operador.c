@@ -15,8 +15,8 @@ void imprimirDatoIndice(void *info, unsigned tam, unsigned n, void *params)
 int compararClaveIndice(const void *a, const void *b) // comparamos por Nombre y Puntaje
 {
     int cmp = 0;
-    tIndice *idxA = (tIndice*)a;
-    tIndice *idxB = (tIndice*)b;
+    const tIndice *idxA = (const tIndice*)a;
+    const tIndice *idxB = (const tIndice*)b;
 
     cmp = strcmp(idxA->clave.nombreOperador, idxB->clave.nombreOperador);
     if(cmp)
@@ -53,7 +53,7 @@ int buscarEnArchivoConIndice(FILE *fp, const tArbol *pa, tOperador *o)
                                     sizeof(tIndice),
                                     compararClaveIndice);
 
-    if(claveEncontrada)
+    if(claveEncontrada == HALLADO) //if(claveEncontrada) --> NUNCA ES FALSO pq buscarEnArbol devuelve 0 o 207
     {
         fseek(fp, idx.indiceRegistro * sizeof(tOperador), SEEK_SET);
         fread(o, sizeof(tOperador), 1, fp);
@@ -78,7 +78,7 @@ int guardarEnArchivoConIndice(FILE *fp, const tArbol *pa, tOperador *o)
                                     sizeof(tIndice),
                                     compararClaveIndice);
 
-    if(claveEncontrada)
+    if(claveEncontrada == HALLADO) //MISMO CASO que en buscarArcConIndic -->if(claveEncontrada) --> NUNCA ES FALSO pq buscarEnArbol devuelve 0 o 207
     {
         fseek(fp, idx.indiceRegistro * sizeof(tOperador), SEEK_SET);
         fwrite(o, sizeof(tOperador), 1, fp);

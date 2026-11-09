@@ -281,9 +281,11 @@ int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuraci
 
 
 
-    puerto->muelles = calloc(puerto->cantMuelles, sizeof(tMuelle));   // calloc deja buqueAct = NULL
-    if(!puerto->muelles)
-        return ERR_MEMORIA;
+    puerto->muelles = calloc(configuracion->cantidadMuelles, sizeof(tMuelle));   // calloc deja buqueAct = NULL
+    if(!puerto->muelles){
+        free(tiemposBuques);
+        free(camiones);
+        return ERR_MEMORIA;}
     puerto->cantMuelles = configuracion->cantidadMuelles;
     for(i = 0; i < puerto->cantMuelles; i++)
         sprintf(((puerto->muelles + i)->codMuelle), "M%d", i + 1);
@@ -1027,24 +1029,26 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
     {
         tContenedor contenedorDescargado; // la aux
         int resultado = ejecutarDES(muelleDestino, zonaDestino, &contenedorDescargado);
-        if(resultado == BUQUE_COMPLETO)
+        if(resultado != TODO_OK && resultado != BUQUE_COMPLETO){return resultado;}
+        printf("Contenedor %s colocado en zona %s\n", contenedorDescargado.id,zonaDestino->codZona);
+        if(resultado == BUQUE_COMPLETO) // res == 6 es pq se descargo el ultimo contenedor
         {
             operacion->puntuacion = 5;
             free(muelleDestino->buqueAct);
             muelleDestino->buqueAct = NULL;
             resumen->buquesDescargados++;
-        }
+        }/*
         if( resultado != OP_EXITO)
         {
             printf("Codigo de error: %d.", resultado);
             return resultado;
-        }
-        printf("Contenedor %s colocado en zona %s\n", contenedorDescargado.id,zonaDestino->codZona);
+        }*/
+        //printf("Contenedor %s colocado en zona %s\n", contenedorDescargado.id,zonaDestino->codZona);
         return OP_EXITO;
     }
 
 
-    break;
+    //break;
 
     case OPERACION_REU:
     {
@@ -1167,8 +1171,8 @@ int eventoOperadorIni(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOpe
     if(modoAperturaOperador != ARCH_CREACION && modoAperturaIndice != ARCH_CREACION)
     {
         cargarIndiceDesdeArchivo(arbol, *fpIndice);                                       // cargamos indice con operador.idx
-        if(buscarEnArchivoConIndice(*fpIndice, arbol, operador)==CLAVE_NO_ENCONTRADA)     // si no encuentra marcamos flag para el final de jornada
-        {                                                                                // operador queda con datos de archivo listo para actualizar si encuentra
+        //if(buscarEnArchivoConIndice(*fpIndice, arbol, operador)==CLAVE_NO_ENCONTRADA)// si no encuentra marcamos flag para el final de jornada
+        if(buscarEnArchivoConIndice(*fpOperador, arbol, operador)==CLAVE_NO_ENCONTRADA){                                                                               // operador queda con datos de archivo listo para actualizar si encuentra
               *nuevoOperador = 1;                                                        // flag nos hara saber si debemos rearmar indice o no
               operador->puntajeTotal = 0;
         }
