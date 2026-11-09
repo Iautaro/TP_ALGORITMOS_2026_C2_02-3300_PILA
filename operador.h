@@ -8,7 +8,7 @@
 typedef struct
 {
     char nombre[TAM_NOMBRE + 1];
-    unsigned puntajeTotal;
+    int puntajeTotal;
 } tOperador;
 
 void mostrarOperador(const tOperador *p);

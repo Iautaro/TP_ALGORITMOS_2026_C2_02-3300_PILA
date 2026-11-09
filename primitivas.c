@@ -44,6 +44,17 @@ int pilaVacia(const tPila *p)
     return *p == NULL;
 }
 
+void vaciarPila(tPila* p)
+{
+    while(*p)
+    {
+        tNodo* aux = *p;
+        *p = aux->sig;
+        free(aux->info);
+        free(aux);
+    }
+}
+
 void crearCola(tCola *p)
 {
     p->pri = NULL;
@@ -349,5 +360,5 @@ void* buscarLista(const tLista* p, const void* dato, Cmp cmp)
     }
     if(!encontrado)
         return NULL;
-    return aux;
+    return aux->info;
 }

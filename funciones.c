@@ -31,8 +31,11 @@ int leerConfiguracion(FILE* arch, tConfig* configuracion)
         // en teoria leeria desde el espacio inclusive, por lo que sumandole uno se lo saltaria
         parametroLeido = strtok(lineaParametro, ":");
         valorLeido = strtok(NULL, "\0:");
-        if(*valorLeido == ' ')
-            valorLeido += 1;
+        if(valorLeido)
+        {
+            if(*valorLeido == ' ')
+                valorLeido += 1;
+        }
 
         // Verificar que todo haya salido bien
         if(!parametroLeido || !valorLeido)
@@ -46,6 +49,22 @@ int leerConfiguracion(FILE* arch, tConfig* configuracion)
         {
             printf("No se pueden ingresar numeros negativos en config.txt\n");
             return ERR_PARAM;
+        }
+        else //verificar que no sea > 99
+        {
+            if(strcmp(parametroLeido, "duracion_jornada_minutos") != 0 && atoi(valorLeido) > 99)
+            {
+                printf("El limite de los parametros es 99 (excepto duracion_jornada_minutos)\n");
+                return ERR_PARAM;
+            }
+            else
+            {
+                if(strcmp(parametroLeido, "duracion_jornada_minutos") == 0 && atoi(valorLeido) <= 0)
+                {
+                    printf("La duracion de la jornada debe ser mayor a 0\n");
+                    return ERR_PARAM;
+                }
+            }
         }
 
         // Las siguientes comprobaciones sirven para asegurarse que la configuracion se guarda donde se debe
@@ -116,12 +135,23 @@ int abrirOCrearArchivo(const char* nomArch, FILE **arch)
 /// Crear el archivo puerto.txt y llenarlo de forma aleatoria cada pasada
 int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuracion, tCola* contenedores, Cmp cmpInt, Cmp cmpTiempo)
 {
+    puerto->muelles = NULL;
+    puerto->cantMuelles = 0;
+    crearLista(&puerto->zonas);
+    crearCola(&puerto->buquesEsperando);
+    crearCola(&puerto->camionesEsperando);
+    crearCola(&puerto->buquesArchivo);
+    crearCola(&puerto->camionesArchivo);
+
     fprintf(archPuerto, "JORNADA:%d\n", configuracion->duracionJornadaMinutos);
     fprintf(archPuerto, "MUELLES:%d\n", configuracion->cantidadMuelles);
     fprintf(archPuerto, "ZONAS:%d\n", configuracion->cantidadZonasAlmacenamiento);
     fprintf(archPuerto, "CAPACIDAD_PILA:%d\n", configuracion->capacidadPila);
     fprintf(archPuerto, "\n");
     fprintf(archPuerto, "[BUQUES]\n");
+
+    // var para errores
+    int resultado;
 
     // Vector de enteros que guarda los tiempos de llegada de cada buque
     int* tiemposBuques = malloc(configuracion->maximoBuques * sizeof(int));
@@ -194,10 +224,13 @@ int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuraci
     {
         snprintf(nroCont, TAM_NOM_CONTENEDOR, "C%d01", b);
         fprintf(archPuerto, "B%03d;T=%d;C=%s", b, *(tiemposBuques + b - 1), nroCont);
+        contenedoresTotales++;
 
         if(ponerEnCola(contenedores, nroCont, TAM_NOM_CONTENEDOR) != TODO_OK)
         {
             printf("Error al asignar memoria para cola de contenedores para puerto.txt\n");
+            free(tiemposBuques);
+            free(camiones);
             return ERR_MEMORIA;
         }
 
@@ -213,6 +246,8 @@ int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuraci
             if(ponerEnCola(contenedores, nroCont, TAM_NOM_CONTENEDOR) != TODO_OK)
             {
                 printf("Error al asignar memoria para cola de contenedores para puerto.txt\n");
+                free(tiemposBuques);
+                free(camiones);
                 return ERR_MEMORIA;
             }
         }
@@ -227,34 +262,45 @@ int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuraci
         if(sacarDeCola(contenedores, (camiones + i)->codigoContenedor, TAM_NOM_CONTENEDOR) != TODO_OK)
         {
             printf("Error al asignar memoria para sacar de cola\n");
+            free(tiemposBuques);
+            free(camiones);
             return ERR_MEMORIA;
         }
         i++;
     }
     // Ordenar el vector de camiones por tiempo de llegada
-    qsort(camiones, configuracion->maximoCamiones, sizeof(int), cmpTiempo);
+    qsort(camiones, configuracion->maximoCamiones, sizeof(tCamion), cmpTiempo);
 
     // Registrar los camiones
     fprintf(archPuerto, "\n");
     fprintf(archPuerto, "[CAMIONES]\n");
-    for(k = 1; k <= configuracion->maximoCamiones; k++)
+    for(k = 1; k <= configuracion->maximoCamiones && k <= i; k++)
     {
         fprintf(archPuerto, "K%03d;T=%d;C=%s\n", k, (camiones + k - 1)->tiempoLlegada, (camiones + k - 1)->codigoContenedor);
     }
 
 
-    puerto->cantMuelles = configuracion->cantidadMuelles;
+
     puerto->muelles = calloc(puerto->cantMuelles, sizeof(tMuelle));   // calloc deja buqueAct = NULL
+    if(!puerto->muelles)
+        return ERR_MEMORIA;
+    puerto->cantMuelles = configuracion->cantidadMuelles;
     for(i = 0; i < puerto->cantMuelles; i++)
         sprintf(((puerto->muelles + i)->codMuelle), "M%d", i + 1);
-    crearLista(&puerto->zonas);
+    if(crearZonas(&puerto->zonas, configuracion->cantidadZonasAlmacenamiento, configuracion->capacidadPila) != TODO_OK)
+    {
+        free(puerto->muelles);
+        free(tiemposBuques);
+        free(camiones);
+        return ERR_MEMORIA;
+    }
     fflush(archPuerto);
     rewind(archPuerto);
-    crearBuquesyCamiones(puerto, archPuerto);
+    resultado = crearBuquesyCamiones(puerto, archPuerto);
     free(tiemposBuques);
     free(camiones);
 
-    return TODO_OK;
+    return resultado;
 }
 
 /// Ingresar texto
@@ -309,7 +355,7 @@ char verificarParametrosOperacion(char* param1, char* param2, char tipoParam1)
         // Entonces, si no es un espacio (lo mas normal) ni es \0 (es decir que hay un digito mas despues del primero numero, ej: Z3X), pero eso que sigue no es un numero, se considera como no encontrado
         // Si hay un digito y dicho digito es un numero, sigue considerandose encontrado
         if((*(param1 + 2) != ' ' && *(param1 + 2) != '\0') && (*(param1 + 2) < '0' || *(param1 + 2) > '9'))
-            encontrado = 'n';
+            return 'n';
     }
     else
         return 'n';
@@ -319,7 +365,7 @@ char verificarParametrosOperacion(char* param1, char* param2, char tipoParam1)
     {
         encontrado = 's';
         if((*(param2 + 2) != ' ' && *(param2 + 2) != '\n' && *(param2 + 2) != '\0') && (*(param2 + 2) < '0' || *(param2 + 2) > '9'))
-            encontrado = 'n';
+            return 'n';
     }
     else
         return 'n';
@@ -327,7 +373,7 @@ char verificarParametrosOperacion(char* param1, char* param2, char tipoParam1)
     return encontrado;
 }
 
-/// Validar el comando de operacion ingresado y su sintaxis
+/// Validar el comando de operacion ingresado y su sintaxis / 'e' = error
 char validarOperacion(char* operacion)
 {
     const char* comandosValidos[CANT_COMANDOS] = {"DES", "REU", "ENT", "VER", "ESP"};
@@ -342,8 +388,11 @@ char validarOperacion(char* operacion)
     strcpy(aux, operacion);
     // Primero obtengo el comando, ya que no se si va a tener parametros o no, depende el comando
     char* comando = strtok(aux, " \n\0");
+    if(comando == NULL)
+        return 'n';
     char* parametro1;
     char* parametro2;
+    char* parametro3;
 
     // Reviso que sea una operacion posible
     int c;
@@ -370,6 +419,21 @@ char validarOperacion(char* operacion)
             encontrado = verificarParametrosOperacion(parametro1, parametro2, 'M');
         else
             encontrado = verificarParametrosOperacion(parametro1, parametro2, 'Z');
+        parametro3 = strtok(NULL, " \n\0");
+        if(parametro3)
+        {
+            if(*parametro3 != '\n' && *parametro3 != '\0')
+                return 'e';
+        }
+    }
+    else
+    {
+        parametro1 = strtok(NULL, " \n\0");
+        if(parametro1)
+        {
+            if(*parametro1 != '\n' && *parametro1 != '\0')
+                return 'e';
+        }
     }
 
     return encontrado;
@@ -408,7 +472,8 @@ int cmpContEnZona(const void* a, const void* b)
     const tZona* z = (const tZona*)a;
     const char* codCont = (const char*)b;
     tContenedor c;
-    verTope(&z->contenedores, &c, sizeof(tContenedor));
+    if(verTope(&z->contenedores, &c, sizeof(tContenedor)))
+        return PILA_VACIA;
     return strcmp(c.id, codCont);
 }
 
@@ -436,7 +501,7 @@ int ejecutarDES( tMuelle *muelle, tZona *zonaDest, tContenedor *contenedor_desca
     }
 
     // if(colaVacia(&((*muelle).buqueAct->cont_pend) ))
-    if((&((*muelle).buqueAct->cont_pend) ))             // verifica si hay contenedores pendientes en el buque de ese muelle
+    if(pilaVacia(&muelle->buqueAct->cont_pend))           // verifica si hay contenedores pendientes en el buque de ese muelle
         return BUQUE_VACIO;                             // implementado con pila
 
     if(zonaDest->cantActual >= zonaDest->capacMax)      // verifica que haya espacio en la zona para ingresar contenedor
@@ -451,6 +516,8 @@ int ejecutarDES( tMuelle *muelle, tZona *zonaDest, tContenedor *contenedor_desca
 
     // Contador de zona
     zonaDest->cantActual++;
+    if(pilaVacia(&muelle->buqueAct->cont_pend))
+        return BUQUE_COMPLETO;
 
     return TODO_OK;
 }
@@ -482,7 +549,7 @@ int validarCantidad( int leidos, int cant_esperada)
     return TODO_OK;
 }
 
-int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int tiempoAct, unsigned int *tiempoJornada, int puntuacion, tOperador *operador)
+int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int* tiempoAct, tConfig* config, tResumen *resumen)
 {
     tOperacion operacion;
     char aux[MAX_CODIGO];
@@ -491,21 +558,31 @@ int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int tiempoAct, unsi
     tMuelle *muelleDestino = NULL;
     tZona *zonaDestino = NULL;
     tZona *zonaOrigen = NULL;
+    int resultado;
 
-    int resultado = detectarOperacion(comando, zonaOrigen, zonaDestino, muelleDestino, &operacion, puerto, tiempoAct, puntuacion);
+    memset(&operacion, 0, sizeof(tOperacion));
+
+    resultado = detectarOperacion(comando, &zonaOrigen, &zonaDestino, &muelleDestino, &operacion, puerto);
     if(resultado != TODO_OK)
         return resultado;
 
-    resultado = realizarEventos(puerto, &operacion, &tiempoAct, tiempoJornada);
+    operacion.tiempoPorDefault = duracionOperacion(operacion.codOperacion, config);
+    operacion.tiempoDeCreacion = *tiempoAct;
+
+    if(*tiempoAct + operacion.tiempoPorDefault > config->duracionJornadaMinutos)
+        return TIEMPO_INSUFICIENTE;
+
+    resultado = realizarOperacion(&operacion, zonaOrigen, zonaDestino, muelleDestino, puerto, *tiempoAct, resumen);
     if(resultado != TODO_OK)
         return resultado;
 
-    resultado = realizarOperacion(&operacion, zonaOrigen, zonaDestino, muelleDestino, puerto, tiempoAct, puntuacion);
+    resultado = realizarEventos(puerto, &operacion, tiempoAct);
     if(resultado != TODO_OK)
         return resultado;
 
-    operador->puntajeTotal += operacion.puntuacion;     // realiza suma de puntuación por cada operación finalizada
-    operacion.tiempoDeFinalizacion = tiempoAct;         // registro tiempo de finalizacion de operacion
+
+    resumen->puntuacionFinal += operacion.puntuacion;     // realiza suma de puntuación por cada operación finalizada
+    operacion.tiempoDeFinalizacion = *tiempoAct;         // registro tiempo de finalizacion de operacion
 
     return OP_EXITO;
 }
@@ -588,14 +665,13 @@ void ejecutarVER( tPuerto* puerto, int tiempoActual, int puntuacionProv)
             else
             {
                 //tContenedor *prox = (tContenedor*)m->buqueAct->cont_pend.pri->info;
-                memcpy(&prox,m->buqueAct->cont_pend->info, m->buqueAct->cont_pend->tamInfo);
+                verTope(&m->buqueAct->cont_pend, &prox, sizeof(tContenedor));
                 printf("%s: %s -> proximo contenedor %s.\n", m->codMuelle, m->buqueAct->codigoBuque, prox->id);
             }
         }
     }
 
     int contador = 0; // Cant buques esperando
-    contador = contarCola(&puerto->buquesEsperando);
     contador = contarCola(&puerto->buquesEsperando);
     printf("Cantidad de buques esperando muelles disponibles: %d\n", contador);
 
@@ -611,25 +687,7 @@ void ejecutarVER( tPuerto* puerto, int tiempoActual, int puntuacionProv)
 
 tZona* buscarZonaTope(tLista zonas, const char *codContBuscado)
 {
-    tNodo *aux = zonas;
-    while(aux != NULL)
-    {
-        tZona *zonaActual= (tZona*)aux->info;
-
-        if( zonaActual->contenedores != NULL)
-        {
-            tNodo *nodoCont = zonaActual->contenedores;
-            tContenedor *c = (tContenedor*)nodoCont->info;
-
-            if( strcmp(c->id,codContBuscado)==0 )
-            {
-                return zonaActual;
-            }
-        }
-
-        aux = aux->sig;
-    }
-    return NULL;
+    return buscarLista(&zonas, codContBuscado, cmpContEnZona);
 }
 
 int parsearBuques(tBuque *buque, char *buffer, char* bufferCodigo)
@@ -652,16 +710,16 @@ int parsearBuques(tBuque *buque, char *buffer, char* bufferCodigo)
 
     while((ptrBuffer = strrchr(buffer, ','))!=NULL) // leo tantos C= como halla en archivo excepto el primero (usa ";")
     {
-        strncpy(bufferCodigo,ptrBuffer+1,TAM_LINEA_CODIGO_CONT);
-        bufferCodigo[TAM_LINEA_CODIGO_CONT]='\0'; // buffer tendra vector de char que ira a pila de codigos de buque actual
-        ponerEnPila(&buque->cont_pend, bufferCodigo, strlen(bufferCodigo)); /// PENDIENTE PARA CUANDO PASE TODO A PILA
+        strncpy(bufferCodigo, ptrBuffer + 1, TAM_LINEA_CODIGO_CONT);
+        bufferCodigo[TAM_LINEA_CODIGO_CONT - 1] = '\0'; // buffer tendra vector de char que ira a pila de codigos de buque actual
+        ponerEnPila(&buque->cont_pend, bufferCodigo, strlen(bufferCodigo) + 1); /// PENDIENTE PARA CUANDO PASE TODO A PILA
         *ptrBuffer = '\0';
     }
 
     ptrBuffer = strrchr(buffer, ';');   // busco el ultimo C= con ";"
-    strncpy(bufferCodigo,ptrBuffer+3,TAM_LINEA_CODIGO_CONT);; // ptrBuffer+3 salto ;C= y queda en C de C001
-    bufferCodigo[TAM_LINEA_CODIGO_CONT]='\0';
-    ponerEnPila(&buque->cont_pend, bufferCodigo, strlen(bufferCodigo)); // ultima carga al fondo de pila y primera queda en tope
+    strncpy(bufferCodigo, ptrBuffer + 3, TAM_LINEA_CODIGO_CONT); // ptrBuffer+3 salto ;C= y queda en C de C001
+    bufferCodigo[TAM_LINEA_CODIGO_CONT - 1] = '\0';
+    ponerEnPila(&buque->cont_pend, bufferCodigo, strlen(bufferCodigo) + 1); // ultima carga al fondo de pila y primera queda en tope
     /// PENDIENTE PARA CUANDO PASE TODO A PILA
     *ptrBuffer = '\0';
 
@@ -671,7 +729,7 @@ int parsearBuques(tBuque *buque, char *buffer, char* bufferCodigo)
     *ptrBuffer = '\0';
 
     strncpy(buque->codigoBuque,buffer,TAM_NOMBRE);
-    buque->codigoBuque[TAM_NOMBRE]='\0';
+    buque->codigoBuque[TAM_NOMBRE - 1]='\0';
     // fin desarmar buffer
 
     return TODO_OK;
@@ -700,13 +758,14 @@ int parsearCamiones(tCamion *camion, char *buffer)
     ptrBuffer = strrchr(buffer, ';');
     strncpy(camion->codigoContenedor, ptrBuffer+3, TAM_NOM_CONTENEDOR - 1);
     camion->codigoContenedor[TAM_NOM_CONTENEDOR - 1] = '\0';
+    *ptrBuffer = '\0';
 
     ptrBuffer = strrchr(buffer, ';');
     sscanf(ptrBuffer+3,"%u", &camion->tiempoLlegada);
     *ptrBuffer = '\0';
 
     strncpy(camion->codigoCamion,buffer,TAM_NOMBRE);
-    camion->codigoCamion[TAM_NOMBRE]='\0';
+    camion->codigoCamion[TAM_NOMBRE - 1]='\0';
     // fin desarmar buffer
 
     return TODO_OK;
@@ -721,10 +780,6 @@ int crearBuquesyCamiones(tPuerto* puerto, FILE *pfPuerto)
     char buffer[TAM_LINEA_BUFF_LECTURA];
     char bufferCodigo[TAM_LINEA_CODIGO_CONT];
 
-    crearCola(&puerto->buquesEsperando);
-    crearCola(&puerto->camionesEsperando);
-    crearCola(&puerto->buquesArchivo);
-    crearCola(&puerto->camionesArchivo);
     crearPila(&buque.cont_pend); /// creo pila dinamica para contenedores dentro de buque
 
     /// Inicio buscando buques
@@ -739,18 +794,33 @@ int crearBuquesyCamiones(tPuerto* puerto, FILE *pfPuerto)
     {
         return NO_HALLADO;
     }
+
     if(parsearBuques(&buque, buffer, bufferCodigo)!=TODO_OK)
     {
+        vaciarPila(&buque.cont_pend);
         return NO_HALLADO;
     }
-    ponerEnCola(&puerto->buquesArchivo, &buque,sizeof(tBuque));
+
+    if(ponerEnCola(&puerto->buquesArchivo, &buque,sizeof(tBuque)) != TODO_OK)
+    {
+        vaciarPila(&buque.cont_pend);
+        return ERR_MEMORIA;
+    }
+
     while(fgets(buffer, TAM_LINEA_BUFF_LECTURA, pfPuerto) && *buffer != '\n')
     {
+        crearPila(&buque.cont_pend); // ya estaba creada como tal, pero no la vacio asi no se liberan los nodos
         if(parsearBuques(&buque, buffer, bufferCodigo)!=TODO_OK)
         {
+            vaciarPila(&buque.cont_pend);
             return NO_HALLADO;
         }
-        ponerEnCola(&puerto->buquesArchivo, &buque,sizeof(tBuque));
+
+        if(ponerEnCola(&puerto->buquesArchivo, &buque,sizeof(tBuque)))
+        {
+            vaciarPila(&buque.cont_pend);
+            return ERR_MEMORIA;
+        }
 
 
     }
@@ -765,95 +835,76 @@ int crearBuquesyCamiones(tPuerto* puerto, FILE *pfPuerto)
 
     // caso: llego al final del archivo y no hallo CAMIONES
     if(comparacion != 0)
-    {
         return NO_HALLADO;
-    }
 
     if(parsearCamiones(&camion, buffer)!=TODO_OK)
-    {
         return NO_HALLADO;
-    }
-    ponerEnCola(&puerto->camionesArchivo, &camion, sizeof(tCamion));
+
+    if(ponerEnCola(&puerto->camionesArchivo, &camion, sizeof(tCamion)))
+        return ERR_MEMORIA;
+
     while(fgets(buffer, TAM_LINEA_BUFF_LECTURA, pfPuerto))
     {
         if(parsearCamiones(&camion, buffer)!=TODO_OK)
-        {
             return NO_HALLADO;
-        }
-        ponerEnCola(&puerto->camionesArchivo, &camion, sizeof(tCamion));
+
+        if(ponerEnCola(&puerto->camionesArchivo, &camion, sizeof(tCamion)))
+            return ERR_MEMORIA;
     }
 
     return TODO_OK;
 }
 
-int realizarEventos(tPuerto *puerto, tOperacion *operacion,
-                    int *temporizador, unsigned int *tiempoJornada)
+int realizarEventos(tPuerto *puerto, tOperacion *operacion, int *temporizador)
 {
-    /// PARA realizarEventos
-    unsigned tiempoLimite = 0;
+    unsigned tiempoFin = *temporizador + operacion->tiempoPorDefault;
     int resultado;
 
-    tiempoLimite = *temporizador + operacion->tiempoPorDefault;
-    if(tiempoLimite > *tiempoJornada) // detección de fin de jornada
-        return FIN_JORNADA; // no alcanza el tiempo para ejecutar la operación
-
-    while(*temporizador <= tiempoLimite)
+    while(*temporizador < tiempoFin)
     {
-        if((resultado = vigiladorBuques(puerto, temporizador, &operacion->tiempoPorDefault))!=TODO_OK)// llegada buques
+        if((resultado = vigiladorBuques(puerto, *temporizador))!=TODO_OK)// llegada buques
             return resultado;
 
-        if((resultado = vigiladorCamiones(puerto, temporizador))!=TODO_OK) // llegada camiones
+        if((resultado = vigiladorCamiones(puerto, *temporizador))!=TODO_OK) // llegada camiones
             return resultado;
 
         (*temporizador)++;
     }
-
-    // caso limite temp == tiempoLim
-    if((resultado = vigiladorBuques(puerto, temporizador, &operacion->tiempoPorDefault))!=TODO_OK)// llegada buques
-        return resultado;
-
-    if((resultado = vigiladorCamiones(puerto, temporizador))!=TODO_OK) // llegada camiones
-        return resultado;
-
     return TODO_OK;
 }
 
-int vigiladorBuques(tPuerto *puerto, const int *temporizador, const int *tiempoPorDefault)
+int vigiladorBuques(tPuerto *puerto, const int temporizador)
 {
     tBuque buque;
-
-    if(colaVacia(&(puerto->buquesArchivo)))
-        return FIN_BUQUE;
-
-    sacarDeCola(&(puerto->buquesArchivo), &buque, sizeof(buque));
-
-    if((buque.horaLlegada == *temporizador)) // evaluo si buque llego en temporizador actual
+    int resultado;
+    while(verPrimeroCola(&puerto->buquesArchivo, &buque, sizeof(tBuque)) == TODO_OK && buque.horaLlegada <= temporizador)
     {
-        if(asignarMuelle(&buque, puerto->muelles, puerto->cantMuelles) != TODO_OK) // mando a muelle si no puedo mando a cola de espera
-            ponerEnCola(&puerto->buquesEsperando, &buque, sizeof(buque)); // cola de espera
+        sacarDeCola(&(puerto->buquesArchivo), &buque, sizeof(buque));
 
+        resultado = asignarMuelle(&buque, puerto->muelles, puerto->cantMuelles); // mando a muelle
+        if(resultado == PUERTO_LLENO)
+            resultado = ponerEnCola(&puerto->buquesEsperando, &buque, sizeof(buque)); //  si no puedo mandar a muelle mando a cola de espera
+        if(resultado != TODO_OK)
+        {
+            vaciarPila(&buque.cont_pend);
+            return resultado;
+        }
     }
-
     return TODO_OK;
 }
 
-int vigiladorCamiones(tPuerto *puerto, const int *temporizador)
+int vigiladorCamiones(tPuerto *puerto, const int temporizador)
 {
     tCamion camion;
     int resultado;
 
-    if(colaVacia(&puerto->camionesArchivo))
-        return FIN_CAMIONES;
-
-    sacarDeCola(&puerto->camionesArchivo, &camion, sizeof(tCamion));
-
-    if(camion.tiempoLlegada == *temporizador) // evaluo si camion llego en temporizador actual
+    while(verPrimeroCola(&puerto->camionesArchivo, &camion, sizeof(tCamion)) == TODO_OK && camion.tiempoLlegada <= temporizador)
     {
-        // solo ponemos en cola para lo demas esperar ACCION de operador
-        if((resultado = ponerEnCola(&puerto->camionesEsperando, &camion, sizeof(camion)))!=TODO_OK)
+        sacarDeCola(&puerto->camionesArchivo, &camion, sizeof(tCamion));
+        resultado = ponerEnCola(&puerto->camionesEsperando, &camion, sizeof(camion));
+        if(resultado != TODO_OK)
             return resultado;
     }
-
     return TODO_OK;
 }
 
@@ -866,13 +917,16 @@ int asignarMuelle(tBuque *buque, tMuelle *muelle, int cantMuelles)
         en caso de llegar al final marco que no hay espacio
     */
     int i = 0;
-    int encontrado;
+    int encontrado = 0;
     while(i < cantMuelles && !encontrado)
     {
         if((muelle + i)->buqueAct == NULL)
         {
             //asignamos
-            memcpy((muelle + i)->buqueAct, buque, sizeof(tBuque));
+            (muelle + i)->buqueAct = malloc(sizeof(tBuque));
+            if(!(muelle + i)->buqueAct)
+                return ERR_MEMORIA;
+            *(muelle + i)->buqueAct = *buque;
             encontrado = 1;
         }
         i++;
@@ -885,8 +939,8 @@ int asignarMuelle(tBuque *buque, tMuelle *muelle, int cantMuelles)
 
 }
 
-int detectarOperacion(const char* comando, tZona *zonaOrigen, tZona* zonaDestino, tMuelle *muelleDestino, tOperacion *operacion,
-                      tPuerto *puerto, int tiempoAct, int puntuacion)
+int detectarOperacion(const char* comando, tZona **zonaOrigen, tZona** zonaDestino, tMuelle **muelleDestino, tOperacion *operacion,
+                      tPuerto *puerto)
 {
     if (strcmp(comando, "DES") == 0)
     {
@@ -896,12 +950,12 @@ int detectarOperacion(const char* comando, tZona *zonaOrigen, tZona* zonaDestino
         char *param2 = strtok(NULL, " \n\0"); // Zona -> Z1
 
         //
-        muelleDestino = buscarMuelle(puerto, param1);
-        if( muelleDestino == NULL)
+        *muelleDestino = buscarMuelle(puerto, param1);
+        if(*muelleDestino == NULL)
             return MUELLE_INCORRECTO;
 
-        zonaDestino = buscarZona(puerto, param2);
-        if( zonaDestino == NULL)
+        *zonaDestino = buscarZona(puerto, param2);
+        if(*zonaDestino == NULL)
             return ZONA_INCORRECTA; // osea zona incorrecta
 
         operacion->codOperacion = OPERACION_DES;
@@ -913,14 +967,14 @@ int detectarOperacion(const char* comando, tZona *zonaOrigen, tZona* zonaDestino
         char *param2 = strtok(NULL, " \n\0");
 
         // ejecutarREU
-        zonaOrigen = buscarZona(puerto, param1);
-        if( zonaOrigen == NULL)
+        *zonaOrigen = buscarZona(puerto, param1);
+        if(*zonaOrigen == NULL)
         {
             return ZONA_INCORRECTA;
         } // osea zona incorrecta
 
-        zonaDestino = buscarZona(puerto, param2);
-        if( zonaDestino == NULL)
+        *zonaDestino = buscarZona(puerto, param2);
+        if(*zonaDestino == NULL)
         {
             return ZONA_INCORRECTA;
         }// osea zona incorrecta
@@ -955,7 +1009,7 @@ int detectarOperacion(const char* comando, tZona *zonaOrigen, tZona* zonaDestino
 
 
 int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDestino, tMuelle *muelleDestino,
-                      tPuerto *puerto, int tiempoAct, int puntuacion)
+                      tPuerto *puerto, int tiempoAct, tResumen *resumen)
 {
     switch (operacion->codOperacion)
     {
@@ -963,6 +1017,13 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
     {
         tContenedor contenedorDescargado; // la aux
         int resultado = ejecutarDES(muelleDestino, zonaDestino, &contenedorDescargado);
+        if(resultado == BUQUE_COMPLETO)
+        {
+            operacion->puntuacion = 5;
+            free(muelleDestino->buqueAct);
+            muelleDestino->buqueAct = NULL;
+            resumen->buquesDescargados++;
+        }
         if( resultado != OP_EXITO)
         {
             printf("Codigo de error: %d.", resultado);
@@ -978,8 +1039,8 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
     case OPERACION_REU:
     {
         tContenedor contenedor_reubicar;
-        int resultado = ejecutarREU(zonaOrigen,zonaDestino, &contenedor_reubicar);
-        if( resultado != TODO_OK)
+        int resultado = ejecutarREU(zonaOrigen, zonaDestino, &contenedor_reubicar);
+        if(resultado != TODO_OK)
         {
             printf("Error: %d\n", resultado);
             return resultado;
@@ -992,22 +1053,27 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
 
     case OPERACION_VER:
     {
-        ejecutarVER(puerto, tiempoAct, puntuacion);
+        ejecutarVER(puerto, tiempoAct, resumen->puntuacionFinal);
     }
 
     break;
 
     case OPERACION_ENT:
     {
-        ejecutarENT(puerto);              /// REVISAR -> lo que se manda no va a tener sentido, revisar que mandar para que sirva y como procesar lo que hace y devuelve
-    }                                     /// RESPUESTA -> dejamos todo dentro de ejecutarENT, se sacan datos de puerto, se corrije manejo de cola para respetar TDA
+        int resultado = ejecutarENT(puerto);              /// REVISAR -> lo que se manda no va a tener sentido, revisar que mandar para que sirva y como procesar lo que hace y devuelve
+        if(resultado != TODO_OK)                        /// RESPUESTA -> dejamos todo dentro de ejecutarENT, se sacan datos de puerto, se corrije manejo de cola para respetar TDA
+            return resultado;
+        operacion->puntuacion = 10;
+        break;
+    }
 
     break;
 
     case OPERACION_ESP:
     {
-        ejecutarESP(puerto, tiempoAct, 1); /// REVISAR -> OJO hardcodeado luego pasar a variable de configu
+        tiempoAct++;                      /// REVISAR -> OJO hardcodeado luego pasar a variable de configu
                                            /// RESPUESTA -> segun consigna consume 1 MINUTO ver pag 8 este es el extracto: Esperar: consume exactamente 1 minuto.
+                                           /// ACTUALIZACION -> no uso ejecutarESP, sumo de una el tiempo
     }
 
     break;
@@ -1046,7 +1112,7 @@ int ejecutarENT( tPuerto* puerto)
         return ERROR_PILA;
     }
     zonaContenedor->cantActual--;                                                                       // le saco un contenedor
-    if(sacarDeCola(&puerto->camionesEsperando, camionFrente.codigoCamion, sizeof(tCamion)) != TODO_OK )
+    if(sacarDeCola(&puerto->camionesEsperando, &camionFrente, sizeof(tCamion)) != TODO_OK )
     {
         return ERROR_PILA;
     }
@@ -1054,31 +1120,31 @@ int ejecutarENT( tPuerto* puerto)
     return TODO_OK;
 }
 
-int eventoOperadorIni(FILE *fpOperador, FILE *fpJornada, FILE *fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador)
+int eventoOperadorIni(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador)
 {
     int modoAperturaOperador = 0;
     int modoAperturaIndice = 0;
 
-    modoAperturaOperador = abrirOCrearArchivo("operadores.txt", &fpOperador);
-    if(!fpOperador)
+    modoAperturaOperador = abrirOCrearArchivo("operadores.txt", fpOperador);
+    if(!*fpOperador)
     {
         printf("\n%d\n", modoAperturaOperador);
         puts("Error al abrir archivo de operadores.\n");
         return ERR_ARCHIVO;
     }
-    abrirOCrearArchivo("jornadas.txt", &fpJornada);
-    if(!fpJornada)
+    abrirOCrearArchivo("jornadas.txt", fpJornada);
+    if(!*fpJornada)
     {
         puts("Error al abrir archivo de jornadas.\n");
-        fclose(fpOperador);
+        fclose(*fpOperador);
         return ERR_ARCHIVO;
     }
-    modoAperturaIndice = abrirOCrearArchivo("operadores.idx", &fpIndice);
-    if(!fpIndice)
+    modoAperturaIndice = abrirOCrearArchivo("operadores.idx", fpIndice);
+    if(!*fpIndice)
     {
         puts("Error al abrir archivo indice.\n");
-        fclose(fpOperador);
-        fclose(fpJornada);
+        fclose(*fpOperador);
+        fclose(*fpJornada);
         return ERR_ARCHIVO;
     }
 
@@ -1090,8 +1156,8 @@ int eventoOperadorIni(FILE *fpOperador, FILE *fpJornada, FILE *fpIndice, tOperad
     // cargamos el arbol con archivo operadores
     if(modoAperturaOperador != ARCH_CREACION && modoAperturaIndice != ARCH_CREACION)
     {
-        cargarIndiceDesdeArchivo(arbol, fpIndice);                                       // cargamos indice con operador.idx
-        if(buscarEnArchivoConIndice(fpIndice, arbol, operador)==CLAVE_NO_ENCONTRADA)     // si no encuentra marcamos flag para el final de jornada
+        cargarIndiceDesdeArchivo(arbol, *fpIndice);                                       // cargamos indice con operador.idx
+        if(buscarEnArchivoConIndice(*fpIndice, arbol, operador)==CLAVE_NO_ENCONTRADA)     // si no encuentra marcamos flag para el final de jornada
         {                                                                                // operador queda con datos de archivo listo para actualizar si encuentra
               *nuevoOperador = 1;                                                        // flag nos hara saber si debemos rearmar indice o no
               operador->puntajeTotal = 0;
@@ -1124,4 +1190,120 @@ int eventoOperadorFin(FILE *fpOperador, FILE *fpJornada, FILE *fpIndice, tOperad
     /// REVISAR -> nos queda revisar jornada y ranking en archivo
 
     return TODO_OK;
+}
+
+int crearZonas(tLista *zonas, unsigned cantZonas, unsigned capacidad)
+{
+    tZona zona;
+    int i;
+
+    crearLista(zonas);
+
+    for(i = 1; i <= cantZonas; i++)
+    {
+        snprintf(zona.codZona, TAM_COD_ZONA, "Z%u", i);
+        crearPila(&zona.contenedores);
+        zona.cantActual = 0;
+        zona.capacMax = capacidad;
+
+        if(ponerAlFinal(zonas, &zona, sizeof(tZona)) != TODO_OK)
+        {
+            vaciarLista(zonas);   // las pilas estan vacias
+            return ERR_MEMORIA;
+        }
+    }
+    return TODO_OK;
+}
+
+int duracionOperacion(int codOperacion, const tConfig *config)
+{
+    switch(codOperacion)
+    {
+    case OPERACION_DES:
+        return config->tiempoDescargaContenedor;
+    case OPERACION_REU:
+        return config->tiempoReubicacionContenedor;
+    case OPERACION_ENT:
+        return config->tiempoCargaCamion;
+    case OPERACION_ESP:
+        return 1;
+    default:
+        return 0;
+    }
+}
+
+void liberarPuerto(tPuerto *puerto)
+{
+    tBuque buque;
+    tZona zona;
+    int i;
+
+    // buques que quedaron en un muelle y quiza pila con contenedores
+    for(i = 0; i < puerto->cantMuelles; i++)
+    {
+        if((puerto->muelles + i)->buqueAct)
+        {
+            vaciarPila(&(puerto->muelles + i)->buqueAct->cont_pend);
+            free((puerto->muelles + i)->buqueAct);
+        }
+    }
+    free(puerto->muelles);
+    puerto->muelles = NULL;
+    puerto->cantMuelles = 0;
+
+    // buques en las dos colas
+    while(sacarDeCola(&puerto->buquesArchivo, &buque, sizeof(tBuque)) == TODO_OK)
+        vaciarPila(&buque.cont_pend);
+    while(sacarDeCola(&puerto->buquesEsperando, &buque, sizeof(tBuque)) == TODO_OK)
+        vaciarPila(&buque.cont_pend);
+
+    // camiones
+    vaciarCola(&puerto->camionesArchivo);
+    vaciarCola(&puerto->camionesEsperando);
+
+    // zonas
+    while(sacarPrimeroLista(&puerto->zonas, &zona, sizeof(tZona)) == TODO_OK)
+        vaciarPila(&zona.contenedores);
+}
+
+void motivo(int codigo)
+{
+    switch(codigo)
+    {
+    case COMANDO_INVALIDO:
+        printf("\nComando invalido\n");
+        break;
+    case MUELLE_INCORRECTO:
+        printf("\nEl muelle no existe\n");
+        break;
+    case ZONA_INCORRECTA:
+        printf("\nLa zona no existe\n");
+        break;
+    case MUELLE_VACIO:
+        printf("\nNo hay un buque en ese muelle\n");
+        break;
+    case BUQUE_VACIO:
+        printf("\nEl buque no tiene contenedores pendientes\n");
+        break;
+    case ZONA_SIN_CAPACIDAD:
+        printf("\nLa zona de destino esta llena\n");
+        break;
+    case ZONA_ORIGEN_VACIA:
+        printf("\nLa zona de origen esta vacia\n");
+        break;
+    case ZONAS_IGUALES:
+        printf("\nLas zonas deben ser distintas.n");
+        break;
+    case NO_HAY_CAMIONES:
+        printf("\nNo hay camiones esperando\n");
+        break;
+    case CONTENEDOR_NO_DISPONIBLE:
+        printf("\nEl contenedor no esta en el tope de ninguna zona\n");
+        break;
+    case TIEMPO_INSUFICIENTE:
+        printf("\nNo alcanza el tiempo de jornada para esa operacion\n");
+        break;
+    default:
+        printf("\nOperacion rechazada (codigo %d).\n", codigo);
+    }
 }

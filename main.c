@@ -22,7 +22,6 @@ int main()
     FILE* archRanking = NULL;
     tOperador operador;
     tArbol arbol;
-
     printf("Trabajo Practico Puerto de Contenedores - Operacion Contrarreloj\n\n\n");
 
     // Variables para resumen
@@ -81,6 +80,8 @@ int main()
     {
         fclose(archRanking);
         fclose(archPuerto);
+        liberarPuerto(&puerto);
+        vaciarCola(&contenedores);
         return err;
     }
     fclose(archPuerto);
@@ -88,8 +89,14 @@ int main()
     /// IMPORTANTE(20) -> el indice tiene mismos campos que el operador, nos queda doble clave para el indice, se puede reducir? o ampliamos
     ///                   caracteristicas de operador para que no quede igual indice y archivo?
     // Apertura o creacion de archivos de operador y jornada, tambien es inicio de sesion
-    if((err = eventoOperadorIni(archOperadores, archJornadas, archIndice, &operador, &arbol, &nuevoOperador)) != TODO_OK)
+    crearArbol(&arbol);
+    if((err = eventoOperadorIni(&archOperadores, &archJornadas, &archIndice, &operador, &arbol, &nuevoOperador)) != TODO_OK)
     {
+        fclose(archRanking);
+        fclose(archPuerto);
+        liberarPuerto(&puerto);
+        vaciarCola(&contenedores);
+        eliminarArbol(&arbol);
         printf("Falla al realizar el evento de operador con error %d.\n", err);
         return err;
     }
@@ -114,12 +121,14 @@ int main()
     }
 
     // Se usa para validar la operacion. char en vez de int para ahorrar espacio (analizar viabilidad de bool)
-    // posibles 's' o 'n' (s = si/valida, n = no/invalida)
+    // posibles 's' o 'n' (s = si/valida, n = no/invalida) o 'e' = error
     char validez;
     int resultadoOperacion = TODO_OK;
+    int tiempoActual = 0;
+    int fatalError = TODO_OK;
 
     /// While principal
-    while(varsResumen.tiempoUtilizado < configuracion.duracionJornadaMinutos && resultadoOperacion == TODO_OK)
+    while(tiempoActual < configuracion.duracionJornadaMinutos && !fatalError)
     {
         // Mostrar los codigos y sus sintaxis
         mostrarOperaciones();
@@ -138,22 +147,45 @@ int main()
             ingresarTexto(MAX_CODIGO, operacion);
             validez = validarOperacion(operacion);
         }
-
-        resultadoOperacion = ejecutarOperacion(operacion, &puerto, varsResumen.tiempoUtilizado, &(configuracion.duracionJornadaMinutos), varsResumen.puntuacionFinal, &operador);
+        if(validez != 'e') // si no hay error (mas parametros de los pedidos)
+        {
+            resultadoOperacion = ejecutarOperacion(operacion, &puerto, &tiempoActual, &configuracion, &varsResumen);
+            if(resultadoOperacion == ERR_MEMORIA)
+                fatalError = 1;
+            else
+            {
+                if(resultadoOperacion!= TODO_OK)
+                    motivo(resultadoOperacion);
+            }
+        }
+        else
+            fatalError = 1;
 
     }
+
     printf("\n*\n*\n*\n* Finalizando...\n*\n*\n*\n");
 
     /// RESPUESTA(20) -> se crea evento operador inicial y final para manejar arboles y sesion
     /// REVISAR(21) -> pendiente los cierres del operador y fichar los eventos de la jornada en archivo jornada
     // Aca van ultimos pasos para registrar jornada y cerrar operador.
+    if(fatalError)
+        printf("\nError de memoria!\n");
+    else
+    {
+        varsResumen.tiempoUtilizado = tiempoActual;
+        varsResumen.camionesPendientes = contarCola(&puerto.camionesEsperando);
+        varsResumen.puntuacionFinal -= 2*varsResumen.camionesPendientes;
+        operador.puntajeTotal += varsResumen.puntuacionFinal;
+    }
     eventoOperadorFin(archOperadores, archJornadas, archIndice, &operador, &arbol, &nuevoOperador);
 
     eliminarArbol(&arbol);
     fclose(archJornadas);
     fclose(archOperadores);
     fclose(archRanking);
+    fclose(archIndice);
     free(operacion);
     vaciarCola(&contenedores);
+    liberarPuerto(&puerto);
     return 0;
 }

@@ -10,7 +10,7 @@
 #define TAM_NOMBRE 100
 #define TAM_COD_MUELLE 4
 #define TAM_PILA 200
-#define TAM_NOM_CONTENEDOR 5
+#define TAM_NOM_CONTENEDOR 6
 #define TAM_COD_ZONA 4
 #define CANT_MUELLES
 #define MAX_LINEA_CONFIG 35
@@ -25,6 +25,7 @@
 #define ZONA_INCORRECTA -3
 #define MUELLE_INCORRECTO -4
 #define PUERTO_LLENO 5
+#define BUQUE_COMPLETO 6
 
 #define ERR -1
 
@@ -54,11 +55,13 @@
 #define ERR_MEMORIA 204
 #define ERR_PARAM 205
 #define FIN_JORNADA 206
-#define NO_HALLADO 0
+#define NO_HALLADO 207
 #define FIN_CAMIONES 208
 #define FIN_BUQUE 209
 #define NO_HAY_CAMIONES 210
 #define CONTENEDOR_NO_DISPONIBLE 211
+
+#define TIEMPO_INSUFICIENTE 300
 
 #define ARCH_APERTURA 212
 #define ARCH_CREACION 213
@@ -108,6 +111,7 @@ int ponerEnPila(tPila *p, const void *d, unsigned cantBytes);
 int sacarDePila(tPila *p, void *d, unsigned cantBytes);
 int pilaLlena( const tPila *p, unsigned tam);
 int pilaVacia(const tPila *p);
+void vaciarPila(tPila* p);
 int recorrerPila(const tPila* p, Accion accion);
 int verTope(const tPila* p, void* dato, unsigned cantBytes);
 

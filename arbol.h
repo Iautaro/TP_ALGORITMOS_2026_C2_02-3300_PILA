@@ -10,7 +10,7 @@
 #define SIN_MEM 2
 #define TODO_OK 0
 #define HALLADO 1
-#define NO_HALLADO 0
+#define NO_HALLADO 207
 
 #define MINIMO(X,Y) ((X)<(Y)?(X):(Y))
 

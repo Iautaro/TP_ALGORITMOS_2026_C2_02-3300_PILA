@@ -65,7 +65,7 @@ typedef struct
     unsigned camionesPendientes;
     unsigned reorganizaciones;
     unsigned tiempoUtilizado;
-    unsigned puntuacionFinal;
+    int puntuacionFinal;
 } tResumen;
 
 /* --------------- hecho en la rama estructura_main previo a la fusion (empieza aca) --------------- */
@@ -100,35 +100,38 @@ char validarOperacion(char* operacion);
 int inicializarResumen(tResumen* res);
 
 void mostrar_operaciones();
+void motivo(int codigo);
 
 int validarCantidad( int leidos, int cant_esperada);
 tZona* buscarZona(tPuerto *puerto, const char *idBuscado);
 tZona* buscarZonaTope(tLista zonas, const char *codContBuscado);
 tMuelle* buscarMuelle(tPuerto *puerto, const char *idBuscado) ;
+void liberarPuerto(tPuerto *puerto);
 
-int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int tiempoAct, unsigned int *tiempoJornada, int puntuacion, tOperador *operador);
+int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int* tiempoAct, tConfig* config, tResumen *resumen);
 int ejecutarDES( tMuelle *muelle, tZona *zonaDest, tContenedor *contenedor_descarga); // ejecuta descarga
 int ejecutarENT( tPuerto* puerto);
 int ejecutarREU( tZona* zonaOrigen, tZona* zonaDest, tContenedor* contenedor_desc);
 void ejecutarVER( tPuerto* puerto, int tiempoActual, int puntuacionProv);
 void ejecutarESP();
 
+int crearZonas(tLista *zonas, unsigned cantZonas, unsigned capacidad);
 int crearBuquesyCamiones(tPuerto* puerto, FILE *pfPuerto);
 int parsearBuques(tBuque *buque, char *buffer, char* bufferCodigo);
 int parsearCamiones(tCamion *camion, char *buffer);
 
-int vigiladorBuques(tPuerto *puerto, const int *temporizador, const int *tiempoPorDefault);
-int vigiladorCamiones(tPuerto *puerto, const int *temporizador);
+int vigiladorBuques(tPuerto *puerto, const int temporizador);
+int vigiladorCamiones(tPuerto *puerto, const int temporizador);
 int asignarMuelle(tBuque *buque, tMuelle *muelle, int cantMuelles);
 
-int detectarOperacion(const char* comando, tZona *zonaOrigen, tZona* zonaDestino, tMuelle *muelleDestino, tOperacion *operacion,
-                        tPuerto *puerto, int tiempoAct, int puntuacion);
-int realizarEventos(tPuerto *puerto, tOperacion *operacion,
-                    int *temporizador, unsigned int *tiempoJornada);
+int detectarOperacion(const char* comando, tZona **zonaOrigen, tZona** zonaDestino, tMuelle **muelleDestino, tOperacion *operacion,
+                        tPuerto *puerto);
+int realizarEventos(tPuerto *puerto, tOperacion *operacion, int *temporizador);
 int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDestino, tMuelle *muelleDestino,
-                      tPuerto *puerto, int tiempoAct, int puntuacion);
+                      tPuerto *puerto, int tiempoAct, tResumen *resumen);
+int duracionOperacion(int codOperacion, const tConfig *config);
 
-int eventoOperadorIni(FILE *fpOperador, FILE *fpJornada, FILE *fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador);
+int eventoOperadorIni(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador);
 int eventoOperadorFin(FILE *fpOperador, FILE *fpJornada, FILE *fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador);
 
 void printCamion(const void* a);
