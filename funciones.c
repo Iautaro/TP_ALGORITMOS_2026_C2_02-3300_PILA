@@ -400,7 +400,7 @@ char validarOperacion(char* operacion)
     for(c = 0; c < CANT_COMANDOS; c++)
     {
         // cambiar indice por aritmetica de punteros?
-        if(strcmp(comando, comandosValidos[c]) == 0)
+        if(strcmp(comando, *(comandosValidos+c) ) == 0)
             encontrado = 's';
     }
 
@@ -609,8 +609,12 @@ tZona* buscarZona(tPuerto *puerto, const char *idBuscado)
 
 int ejecutarREU( tZona* zonaOrigen, tZona* zonaDest, tContenedor* contenedor_desc)
 {
-
+    /*
     if( zonaOrigen->contenedores == NULL)
+    {
+        return ZONA_ORIGEN_VACIA;
+    }*/
+    if(pilaVacia(&(zonaOrigen->contenedores)))
     {
         return ZONA_ORIGEN_VACIA;
     }
@@ -636,7 +640,8 @@ int ejecutarREU( tZona* zonaOrigen, tZona* zonaDest, tContenedor* contenedor_des
 
 void ejecutarVER( tPuerto* puerto, int tiempoActual, int puntuacionProv)
 {
-    tContenedor *prox;
+    //tContenedor *prox;
+    tContenedor prox;
 
     printf("\n\t\tESTADO DEL PUERTO\n");
     printf("Tiempo: %d\n", tiempoActual);
@@ -666,7 +671,7 @@ void ejecutarVER( tPuerto* puerto, int tiempoActual, int puntuacionProv)
             {
                 //tContenedor *prox = (tContenedor*)m->buqueAct->cont_pend.pri->info;
                 verTope(&m->buqueAct->cont_pend, &prox, sizeof(tContenedor));
-                printf("%s: %s -> proximo contenedor %s.\n", m->codMuelle, m->buqueAct->codigoBuque, prox->id);
+                printf("%s: %s -> proximo contenedor %s.\n", m->codMuelle, m->buqueAct->codigoBuque, prox.id);
             }
         }
     }
@@ -711,14 +716,16 @@ int parsearBuques(tBuque *buque, char *buffer, char* bufferCodigo)
     while((ptrBuffer = strrchr(buffer, ','))!=NULL) // leo tantos C= como halla en archivo excepto el primero (usa ";")
     {
         strncpy(bufferCodigo, ptrBuffer + 1, TAM_LINEA_CODIGO_CONT);
-        bufferCodigo[TAM_LINEA_CODIGO_CONT - 1] = '\0'; // buffer tendra vector de char que ira a pila de codigos de buque actual
+        *(bufferCodigo+TAM_LINEA_CODIGO_CONT-1) = '\0';
+        //bufferCodigo[TAM_LINEA_CODIGO_CONT - 1] = '\0'; // buffer tendra vector de char que ira a pila de codigos de buque actual
         ponerEnPila(&buque->cont_pend, bufferCodigo, strlen(bufferCodigo) + 1); /// PENDIENTE PARA CUANDO PASE TODO A PILA
         *ptrBuffer = '\0';
     }
 
     ptrBuffer = strrchr(buffer, ';');   // busco el ultimo C= con ";"
     strncpy(bufferCodigo, ptrBuffer + 3, TAM_LINEA_CODIGO_CONT); // ptrBuffer+3 salto ;C= y queda en C de C001
-    bufferCodigo[TAM_LINEA_CODIGO_CONT - 1] = '\0';
+    //bufferCodigo[TAM_LINEA_CODIGO_CONT - 1] = '\0';
+    *(bufferCodigo+TAM_LINEA_CODIGO_CONT-1) = '\0';
     ponerEnPila(&buque->cont_pend, bufferCodigo, strlen(bufferCodigo) + 1); // ultima carga al fondo de pila y primera queda en tope
     /// PENDIENTE PARA CUANDO PASE TODO A PILA
     *ptrBuffer = '\0';
@@ -729,7 +736,8 @@ int parsearBuques(tBuque *buque, char *buffer, char* bufferCodigo)
     *ptrBuffer = '\0';
 
     strncpy(buque->codigoBuque,buffer,TAM_NOMBRE);
-    buque->codigoBuque[TAM_NOMBRE - 1]='\0';
+    //buque->codigoBuque[TAM_NOMBRE - 1]='\0';
+    *(buque->codigoBuque+TAM_NOMBRE - 1) = '\0';
     // fin desarmar buffer
 
     return TODO_OK;
@@ -757,7 +765,8 @@ int parsearCamiones(tCamion *camion, char *buffer)
 
     ptrBuffer = strrchr(buffer, ';');
     strncpy(camion->codigoContenedor, ptrBuffer+3, TAM_NOM_CONTENEDOR - 1);
-    camion->codigoContenedor[TAM_NOM_CONTENEDOR - 1] = '\0';
+    *(camion->codigoContenedor+TAM_NOM_CONTENEDOR-1) = '\0';
+    //camion->codigoContenedor[TAM_NOM_CONTENEDOR - 1] = '\0';
     *ptrBuffer = '\0';
 
     ptrBuffer = strrchr(buffer, ';');
@@ -765,7 +774,8 @@ int parsearCamiones(tCamion *camion, char *buffer)
     *ptrBuffer = '\0';
 
     strncpy(camion->codigoCamion,buffer,TAM_NOMBRE);
-    camion->codigoCamion[TAM_NOMBRE - 1]='\0';
+    //camion->codigoCamion[TAM_NOMBRE - 1]='\0';
+    *(camion->codigoCamion+TAM_NOMBRE-1) = '\0';
     // fin desarmar buffer
 
     return TODO_OK;
