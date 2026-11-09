@@ -5,7 +5,6 @@
 
 int compararClaveIndice(const void *a, const void *b) // comparamos por Nombre y Puntaje
 {
-    int cmp = 0;
     const tIndice *idxA = (const tIndice*)a;
     const tIndice *idxB = (const tIndice*)b;
 
