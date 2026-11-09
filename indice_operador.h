@@ -12,16 +12,9 @@
 typedef struct
 {
     char nombreOperador[TAM_NOMBRE+1];
-    unsigned puntaje;
-} tClave;
-
-typedef struct
-{
-    tClave clave;
     unsigned indiceRegistro;
 } tIndice;
 
-void imprimirDatoIndice(void *info, unsigned tam, unsigned n, void *params);
 int compararClaveIndice(const void *a, const void *b);
 void mostrarIndice(const tIndice *pi, unsigned nivel);
 int buscarEnArchivoConIndice(FILE *fp, const tArbol *p, tOperador *o);

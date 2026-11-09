@@ -3,30 +3,13 @@
 #include "operador.h"
 #include "indice_operador.h"
 
-void imprimirDatoIndice(void *info, unsigned tam, unsigned n, void *params)
-{
-    tIndice *idx = (tIndice *) info;
-    printf("indice:%s - %u - %u\n",
-           idx->clave.nombreOperador,
-           idx->clave.puntaje,
-           idx->indiceRegistro);
-}
-
 int compararClaveIndice(const void *a, const void *b) // comparamos por Nombre y Puntaje
 {
     int cmp = 0;
     const tIndice *idxA = (const tIndice*)a;
     const tIndice *idxB = (const tIndice*)b;
 
-    cmp = strcmp(idxA->clave.nombreOperador, idxB->clave.nombreOperador);
-    if(cmp)
-    {
-        return cmp;
-    }
-    else
-    {
-        return (idxA->clave.puntaje - idxB->clave.puntaje);
-    }
+    return strcmp(idxA->nombreOperador, idxB->nombreOperador);
 }
 
 void mostrarIndice(const tIndice *pi, unsigned nivel)
@@ -36,7 +19,7 @@ void mostrarIndice(const tIndice *pi, unsigned nivel)
 
     printf("- indice:%3u - %s\n",
            pi->indiceRegistro,
-           pi->clave.nombreOperador);
+           pi->nombreOperador);
 }
 
 
@@ -45,7 +28,8 @@ int buscarEnArchivoConIndice(FILE *fp, const tArbol *pa, tOperador *o)
 {
     int claveEncontrada;
     tIndice idx;
-    strncpy(idx.clave.nombreOperador,o->nombre,TAM_NOMBRE);
+    memset(&idx, 0, sizeof(idx));
+    strncpy(idx.nombreOperador,o->nombre,TAM_NOMBRE);
 
 
     claveEncontrada = buscarEnArbol(pa,
@@ -70,7 +54,8 @@ int guardarEnArchivoConIndice(FILE *fp, const tArbol *pa, tOperador *o)
 {
     int claveEncontrada;
     tIndice idx;
-    strncpy(idx.clave.nombreOperador,o->nombre,TAM_NOMBRE);
+    memset(&idx, 0, sizeof(idx));
+    strncpy(idx.nombreOperador,o->nombre,TAM_NOMBRE);
 
 
     claveEncontrada = buscarEnArbol(pa,
@@ -96,13 +81,14 @@ int indexarArchivoOperador(FILE *fp, tArbol *pa)
 {
     tOperador operador;
     tIndice indice;
+    memset(&indice, 0, sizeof(indice));
     unsigned long numeroRegistro;
 
     fread(&operador, sizeof(tOperador), 1, fp);
     numeroRegistro = 0L;
     while(!feof(fp))
     {
-        strncpy(indice.clave.nombreOperador, operador.nombre, TAM_NOMBRE);
+        strncpy(indice.nombreOperador, operador.nombre, TAM_NOMBRE);
         indice.indiceRegistro = numeroRegistro;
         insertarArbolBinBusq(pa, &indice, sizeof(tIndice), compararClaveIndice);
         fread(&operador, sizeof(tOperador), 1, fp);
@@ -179,7 +165,7 @@ void mostrarArbolIndiceImpl(const tArbol *p, unsigned nivel)
 
     info = (tIndice *)(*p)->info;
     printf("[Operador: %s] (reg: %u)\n",
-           info->clave.nombreOperador,
+           info->nombreOperador,
            info->indiceRegistro);
 
     mostrarArbolIndiceImpl(&(*p)->izq, nivel + 1);

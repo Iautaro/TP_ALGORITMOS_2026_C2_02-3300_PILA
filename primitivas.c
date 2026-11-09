@@ -128,45 +128,6 @@ void vaciarCola(tCola *p)
 }
 
 
-int desacolar( tCola *c, void *info, unsigned tam)
-{
-    if( c->pri == NULL)
-        return COLA_VACIA; // error
-
-    tNodo *elim = c->pri;
-    c->pri = elim->sig;
-
-    if( c->pri == NULL)
-    {
-        c->ult = NULL;
-    }
-
-    memcpy(info,elim->info,MIN(tam,elim->tamInfo) );
-    free( elim->info);
-    free(elim);
-
-    return TODO_OK;
-}
-
-int apilar( tPila *p, const void *d, unsigned tamInfo)
-{
-    tNodo *nuevoNodo = malloc( sizeof(tNodo));
-    if( nuevoNodo == NULL)
-        return 1; // fallo
-    nuevoNodo->info = malloc(tamInfo);
-    if( nuevoNodo->info == NULL)
-    {
-        free(nuevoNodo);
-        return 1; // fallo
-    }
-    memcpy( nuevoNodo->info, d,tamInfo);
-    nuevoNodo->tamInfo = tamInfo;
-
-    nuevoNodo->sig = *p;
-    *p = nuevoNodo;
-    return TODO_OK;
-}
-
 int recorrerPila(const tPila* p, Accion accion)
 {
     tNodo *aux = *p;
@@ -230,14 +191,16 @@ int listaVacia(const tLista* p)
 int listaLlena(const tLista* p, unsigned cantBytes)
 {
     tNodo* aux = (tNodo*)malloc(sizeof(tNodo));
-    if(aux)
-    {
-        aux->info = malloc(cantBytes);
-        if(!aux->info)
-            return LISTA_LLENA;
-    }
-    else
+    if(!aux)
         return LISTA_LLENA;
+    aux->info = malloc(cantBytes);
+    if(!aux->info)
+    {
+        free(aux);
+        return LISTA_LLENA;
+    }
+    free(aux->info);
+    free(aux);
     return TODO_OK;
 }
 

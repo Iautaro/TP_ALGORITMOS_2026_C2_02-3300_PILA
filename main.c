@@ -55,8 +55,8 @@ int main()
     }
 
     // Apertura y/o creacion de archivo de ranking
-    err = abrirOCrearArchivo("ranking.txt", &archRanking);
-    if(err == ERR_ARCHIVO)
+    err = abrirOCrearArchivo("ranking.txt", &archRanking, 't');
+    if(err == ERR_ARCHIVO || err == MODO_INVALIDO)
     {
         printf("Error al abrir archivo de ranking\n");
         return err;
@@ -88,6 +88,7 @@ int main()
     /// RESPUESTA(20) -> se crea evento operador inicial y final para manejar arboles y sesion
     /// IMPORTANTE(20) -> el indice tiene mismos campos que el operador, nos queda doble clave para el indice, se puede reducir? o ampliamos
     ///                   caracteristicas de operador para que no quede igual indice y archivo?
+    /// reducimos clave a solo codigo
     // Apertura o creacion de archivos de operador y jornada, tambien es inicio de sesion
     crearArbol(&arbol);
     if((err = eventoOperadorIni(&archOperadores, &archJornadas, &archIndice, &operador, &arbol, &nuevoOperador)) != TODO_OK)
@@ -125,8 +126,13 @@ int main()
     char validez;
     int resultadoOperacion = TODO_OK;
     int tiempoActual = 0;
-    int fatalError = TODO_OK;
+    int fatalError = 0;
 
+    // por si hay alguno en T=0
+    if(vigiladorBuques(&puerto, 0) != TODO_OK || vigiladorCamiones(&puerto, 0) != TODO_OK)
+        fatalError = 1;
+    else
+        asignarEsperando(&puerto);
     /// While principal
     while(tiempoActual < configuracion.duracionJornadaMinutos && !fatalError)
     {
@@ -140,26 +146,23 @@ int main()
         validez = validarOperacion(operacion);
 
         // Si no es valida, vuelve a pedir y vuelve a evaluar validez
-        while(validez == 'n')
+        while(validez != 's')
         {
             printf("\nOperacion invalida.");
             printf("\nOPERADOR> ");
             ingresarTexto(MAX_CODIGO, operacion);
             validez = validarOperacion(operacion);
         }
-        if(validez != 'e') // si no hay error (mas parametros de los pedidos)
-        {
-            resultadoOperacion = ejecutarOperacion(operacion, &puerto, &tiempoActual, &configuracion, &varsResumen);
-            if(resultadoOperacion == ERR_MEMORIA)
-                fatalError = 1;
-            else
-            {
-                if(resultadoOperacion!= TODO_OK)
-                    motivo(resultadoOperacion);
-            }
-        }
-        else
+
+        resultadoOperacion = ejecutarOperacion(operacion, &puerto, &tiempoActual, &configuracion, &varsResumen);
+        if(resultadoOperacion == ERR_MEMORIA)
             fatalError = 1;
+        else
+        {
+            if(resultadoOperacion!= TODO_OK)
+                motivo(resultadoOperacion);
+        }
+
 
     }
 

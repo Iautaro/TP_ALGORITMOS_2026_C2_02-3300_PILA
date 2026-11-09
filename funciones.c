@@ -119,17 +119,35 @@ int leerConfiguracion(FILE* arch, tConfig* configuracion)
 
 /// Apertura del archivo o creacion del archivo si no existe
 // modifico esta funcion para poder observar si creo o abrio
-int abrirOCrearArchivo(const char* nomArch, FILE **arch)
+int abrirOCrearArchivo(const char* nomArch, FILE **arch, char modo)
 {
-    *arch = fopen(nomArch, "r+t");
-    if (!*arch)
+    if(modo == 't')
     {
-        *arch = fopen(nomArch, "w+t");
-        if(!*arch)
-            return ERR_ARCHIVO;
-        return ARCH_CREACION;
+        *arch = fopen(nomArch, "r+t");
+        if (!*arch)
+        {
+            *arch = fopen(nomArch, "w+t");
+            if(!*arch)
+                return ERR_ARCHIVO;
+            return ARCH_CREACION;
+        }
+        return ARCH_APERTURA;
     }
-    return ARCH_APERTURA;
+    if(modo == 'b')
+    {
+        *arch = fopen(nomArch, "r+b");
+        if (!*arch)
+        {
+            *arch = fopen(nomArch, "w+b");
+            if(!*arch)
+                return ERR_ARCHIVO;
+            return ARCH_CREACION;
+        }
+        return ARCH_APERTURA;
+    }
+
+    return MODO_INVALIDO;
+
 }
 
 /// Crear el archivo puerto.txt y llenarlo de forma aleatoria cada pasada
@@ -514,7 +532,7 @@ int ejecutarDES( tMuelle *muelle, tZona *zonaDest, tContenedor *contenedor_desca
 
     //desacolar( &((*muelle).buqueAct->cont_pend), contenedor_descarga, sizeof(tContenedor));
     sacarDePila(&(*muelle).buqueAct->cont_pend, contenedor_descarga, sizeof(tContenedor)); // implementado con pila
-    ponerEnPila( &zonaDest->contenedores, contenedor_descarga, sizeof(tContenedor));
+    ponerEnPila(&zonaDest->contenedores, contenedor_descarga, sizeof(tContenedor));
 
     // Contador de zona
     zonaDest->cantActual++;
@@ -874,13 +892,12 @@ int realizarEventos(tPuerto *puerto, tOperacion *operacion, int *temporizador)
 
     while(*temporizador < tiempoFin)
     {
+        (*temporizador)++;
         if((resultado = vigiladorBuques(puerto, *temporizador))!=TODO_OK)// llegada buques
             return resultado;
 
         if((resultado = vigiladorCamiones(puerto, *temporizador))!=TODO_OK) // llegada camiones
             return resultado;
-
-        (*temporizador)++;
     }
     return TODO_OK;
 }
@@ -1037,6 +1054,7 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
             free(muelleDestino->buqueAct);
             muelleDestino->buqueAct = NULL;
             resumen->buquesDescargados++;
+            asignarEsperando(puerto);
         }/*
         if( resultado != OP_EXITO)
         {
@@ -1138,23 +1156,24 @@ int eventoOperadorIni(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOpe
 {
     int modoAperturaOperador = 0;
     int modoAperturaIndice = 0;
+    int modoAperturaJornada = 0;
 
-    modoAperturaOperador = abrirOCrearArchivo("operadores.txt", fpOperador);
-    if(!*fpOperador)
+    modoAperturaOperador = abrirOCrearArchivo("operadores.dat", fpOperador, 'b');
+    if(modoAperturaOperador == ERR_ARCHIVO || modoAperturaOperador == MODO_INVALIDO)
     {
-        printf("\n%d\n", modoAperturaOperador);
+        printf("\nError: %d\n", modoAperturaOperador);
         puts("Error al abrir archivo de operadores.\n");
         return ERR_ARCHIVO;
     }
-    abrirOCrearArchivo("jornadas.txt", fpJornada);
-    if(!*fpJornada)
+    modoAperturaJornada = abrirOCrearArchivo("jornadas.txt", fpJornada, 't');
+    if(modoAperturaJornada == ERR_ARCHIVO || modoAperturaJornada == MODO_INVALIDO)
     {
         puts("Error al abrir archivo de jornadas.\n");
         fclose(*fpOperador);
         return ERR_ARCHIVO;
     }
-    modoAperturaIndice = abrirOCrearArchivo("operadores.idx", fpIndice);
-    if(!*fpIndice)
+    modoAperturaIndice = abrirOCrearArchivo("operadores.idx", fpIndice, 'b');
+    if(modoAperturaIndice == ERR_ARCHIVO || modoAperturaIndice == MODO_INVALIDO)
     {
         puts("Error al abrir archivo indice.\n");
         fclose(*fpOperador);
@@ -1188,11 +1207,14 @@ int eventoOperadorIni(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOpe
 
 int eventoOperadorFin(FILE *fpOperador, FILE *fpJornada, FILE *fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador)
 {
-    if(nuevoOperador)
+    if(*nuevoOperador)
     {
-        fwrite(operador,sizeof(tOperador),1,fpOperador);    // escribimos nuevo operador en archivo directo
+        fseek(fpOperador, 0, SEEK_END);
+        fwrite(operador,sizeof(tOperador),1,fpOperador); // escribimos nuevo operador en archivo directo
+        fflush(fpOperador);
+        rewind(fpOperador);
         indexarArchivoOperador(fpOperador, arbol);          // cargamos arbol con archivo, esperamos desordenado en mayoria
-        guardarIndiceEnArchivoInOrden(arbol, fpIndice);     // lo guardamos InOrden
+        guardarIndiceEnArchivoPreOrden(arbol, fpIndice);    // lo guardamos PreOrden
                                                             // el archivo indice ya queda ordenado
                                                             // para proximas jornadas
     }
@@ -1320,4 +1342,15 @@ void motivo(int codigo)
     default:
         printf("\nOperacion rechazada (codigo %d).\n", codigo);
     }
+}
+
+int asignarEsperando(tPuerto *puerto)
+{
+    tBuque buque;
+    while(verPrimeroCola(&puerto->buquesEsperando, &buque, sizeof(tBuque)) == TODO_OK && asignarMuelle(&buque, puerto->muelles, puerto->cantMuelles) == TODO_OK)
+    {
+        sacarDeCola(&puerto->buquesEsperando, &buque, sizeof(tBuque));
+    }
+
+    return TODO_OK;
 }

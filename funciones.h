@@ -88,7 +88,7 @@ typedef struct
 
 // funciones usadas en main.c
 int leerConfiguracion(FILE* arch, tConfig* configuracion);
-int abrirOCrearArchivo(const char* nomArch, FILE **arch);
+int abrirOCrearArchivo(const char* nomArch, FILE **arch, char modo);
 int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuracion, tCola* contenedores, Cmp cmpInt, Cmp cmpTiempo);
 void ingresarTexto(int max, char* texto);
 void mostrarOperaciones();
@@ -107,6 +107,7 @@ tZona* buscarZona(tPuerto *puerto, const char *idBuscado);
 tZona* buscarZonaTope(tLista zonas, const char *codContBuscado);
 tMuelle* buscarMuelle(tPuerto *puerto, const char *idBuscado) ;
 void liberarPuerto(tPuerto *puerto);
+int asignarEsperando(tPuerto *puerto);
 
 int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int* tiempoAct, tConfig* config, tResumen *resumen);
 int ejecutarDES( tMuelle *muelle, tZona *zonaDest, tContenedor *contenedor_descarga); // ejecuta descarga
