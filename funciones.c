@@ -1188,7 +1188,7 @@ int eventoOperadorIni(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOpe
 
 int eventoOperadorFin(FILE *fpOperador, FILE *fpJornada, FILE *fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador)
 {
-    if(nuevoOperador)
+    if(*nuevoOperador)
     {
         fwrite(operador,sizeof(tOperador),1,fpOperador);    // escribimos nuevo operador en archivo directo
         indexarArchivoOperador(fpOperador, arbol);          // cargamos arbol con archivo, esperamos desordenado en mayoria
