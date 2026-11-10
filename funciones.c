@@ -1103,9 +1103,9 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
 
     case OPERACION_ESP:
     {
-        tiempoAct++;                      /// REVISAR -> OJO hardcodeado luego pasar a variable de configu
-                                           /// RESPUESTA -> segun consigna consume 1 MINUTO ver pag 8 este es el extracto: Esperar: consume exactamente 1 minuto.
-                                           /// ACTUALIZACION -> no uso ejecutarESP, sumo de una el tiempo
+        /// REVISAR -> OJO hardcodeado luego pasar a variable de configu
+        /// RESPUESTA -> segun consigna consume 1 MINUTO ver pag 8 este es el extracto: Esperar: consume exactamente 1 minuto.
+        /// ACTUALIZACION -> no uso ejecutarESP, ya se suma el tiempo en realizarEventos
     }
 
     break;
@@ -1115,11 +1115,6 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
     }
     }
     return TODO_OK;
-}
-
-void ejecutarESP()
-{
-
 }
 
 int ejecutarENT( tPuerto* puerto)
@@ -1328,7 +1323,7 @@ void motivo(int codigo)
         printf("\nLa zona de origen esta vacia\n");
         break;
     case ZONAS_IGUALES:
-        printf("\nLas zonas deben ser distintas.n");
+        printf("\nLas zonas deben ser distintas.\n");
         break;
     case NO_HAY_CAMIONES:
         printf("\nNo hay camiones esperando\n");
@@ -1344,7 +1339,7 @@ void motivo(int codigo)
     }
 }
 
-int asignarEsperando(tPuerto *puerto)
+int asignarEsperando(tPuerto* puerto)
 {
     tBuque buque;
     while(verPrimeroCola(&puerto->buquesEsperando, &buque, sizeof(tBuque)) == TODO_OK && asignarMuelle(&buque, puerto->muelles, puerto->cantMuelles) == TODO_OK)
@@ -1355,7 +1350,7 @@ int asignarEsperando(tPuerto *puerto)
     return TODO_OK;
 }
 
-int jornadaTerminada(tPuerto *puerto)
+int jornadaTerminada(tPuerto* puerto)
 {
     int i;
 
@@ -1369,7 +1364,101 @@ int jornadaTerminada(tPuerto *puerto)
     return FIN_JORNADA;
 }
 
-int hayOperacionValida(tPuerto *puerto, int tiempoAct, const tConfig *config)
+int hayOperacionValida(tPuerto* puerto, int tiempoAct, const tConfig* config)
 {
-    // pendiente
+    int tiempoRestante = config->duracionJornadaMinutos-tiempoAct;
+    int i = 0;
+    int hayBuqueEnMuelle = 0;
+    int hayREU = 0;
+    int hayLugarZona = 0;
+    char codZona[TAM_COD_ZONA];
+    tZona* zona1;
+    tZona* zona2;
+    int j = 0;
+    tCamion camion;
+
+    while(i < puerto->cantMuelles && !hayBuqueEnMuelle)
+    {
+        if((puerto->muelles + i)->buqueAct)
+            hayBuqueEnMuelle = 1;
+        i++;
+    }
+
+    i = 1;
+    while(i <= config->cantidadZonasAlmacenamiento && !hayREU)
+    {
+        snprintf(codZona, TAM_COD_ZONA, "Z%d", i);
+        zona1 = buscarZona(puerto, codZona);
+        if(zona1->cantActual < zona1->capacMax)
+            hayLugarZona = 1;
+
+        if(zona1->cantActual > 0)
+        {
+            j = 1;
+            while(j<= config->cantidadZonasAlmacenamiento && !hayREU)
+            {
+                snprintf(codZona, TAM_COD_ZONA, "Z%d", j);
+                zona2 = buscarZona(puerto, codZona);
+                if(j!=i && zona2->cantActual < zona2->capacMax)
+                {
+                    hayREU = 1;
+                    hayLugarZona = 1;
+                }
+
+                j++;
+            }
+        }
+
+
+        i++;
+    }
+
+    if(hayBuqueEnMuelle && hayLugarZona && tiempoRestante >= duracionOperacion(OPERACION_DES, config))
+        return TODO_OK;
+
+    if(hayREU && tiempoRestante >= duracionOperacion(OPERACION_REU, config))
+        return TODO_OK;
+
+    // para ent, tengo que ver si el contenedor que pide el primer camion existe en el tope de alguna zona
+    if(tiempoRestante >= duracionOperacion(OPERACION_ENT, config) && verPrimeroCola(&puerto->camionesEsperando, &camion, sizeof(camion)) == TODO_OK && buscarZonaTope(puerto->zonas, camion.codigoContenedor) != NULL)
+        return TODO_OK;
+
+    return REVISAR_EVENTOS;
+}
+
+int haySkipAProximoEvento(tPuerto* puerto, int* tiempoAct, tConfig* config)
+{
+    int proximoEvento = 0;
+    tBuque buque;
+    int hay = 0;
+    tCamion camion;
+    tOperacion skip;
+
+    if(verPrimeroCola(&puerto->buquesArchivo, &buque, sizeof(tBuque)) == TODO_OK)
+    {
+        proximoEvento = buque.horaLlegada;
+        hay = 1;
+    }
+
+    if(verPrimeroCola(&puerto->camionesArchivo, &camion, sizeof(tCamion)) == TODO_OK)
+    {
+        if(!hay || camion.tiempoLlegada < proximoEvento)
+        {
+            proximoEvento = camion.tiempoLlegada;
+            hay = 1;
+        }
+    }
+
+    if(!hay)
+        return NO_HAY_EVENTOS;
+
+    // :p
+    printf("\nTomando un cafe. Avanzando tiempo de %d a %d...\n", *tiempoAct, proximoEvento);
+
+    memset(&skip, 0, sizeof(skip));
+    skip.tiempoPorDefault = proximoEvento - *tiempoAct;
+    if(realizarEventos(puerto, &skip, tiempoAct) != TODO_OK)
+        return ERR_MEMORIA;
+
+    return TODO_OK;
 }

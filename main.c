@@ -125,8 +125,9 @@ int main()
     char validez;
     int resultadoOperacion = TODO_OK;
     int tiempoActual = 0;
+    int skipearTiempo;
     int fatalError = 0;
-    int finJornada = 0; // 0 si no es el fin, admite 0, 1 como fin normal y 2 como bloqueo operativo
+    int finJornada = TODO_OK; // 0(TODO_OK) si no es el fin, admite TODO_OK, FIN_JORNADA como fin normal y BLOQUEO_OPERATIVO como bloqueo operativo
 
     // por si hay alguno en T=0
     if(vigiladorBuques(&puerto, 0) != TODO_OK || vigiladorCamiones(&puerto, 0) != TODO_OK)
@@ -136,46 +137,62 @@ int main()
 
 
     /// While principal
-    // Chequear que la jornada pueda arrancar/seguir
-    finJornada = jornadaTerminada(&puerto);
-    if(finJornada != TODO_OK)
-        printf("\nNo queda nada por hacer\n");
-
+    // son varios if anidados para evitar que se ejecute codigo en caso de errores, ya que no puedo cortar el while
     while(tiempoActual < configuracion.duracionJornadaMinutos && !fatalError && finJornada == TODO_OK)
     {
-        // Mostrar los codigos y sus sintaxis
-        mostrarOperaciones();
-
-        // Ingreso de operacion
-        printf("\nOPERADOR> ");
-        ingresarTexto(MAX_CODIGO, operacion);
-        // Validacion de la operacion ingresada
-        validez = validarOperacion(operacion);
-
-        // Si no es valida, vuelve a pedir y vuelve a evaluar validez
-        while(validez != 's')
-        {
-            printf("\nOperacion invalida.");
-            printf("\nOPERADOR> ");
-            ingresarTexto(MAX_CODIGO, operacion);
-            validez = validarOperacion(operacion);
-        }
-
-        resultadoOperacion = ejecutarOperacion(operacion, &puerto, &tiempoActual, &configuracion, &varsResumen);
-        if(resultadoOperacion == ERR_MEMORIA)
-            fatalError = 1;
+        // Chequear que la jornada pueda arrancar/seguir
+        finJornada = jornadaTerminada(&puerto);
+        if(finJornada != TODO_OK)
+            printf("\nNo queda nada por hacer\n");
         else
         {
-            if(resultadoOperacion!= TODO_OK)
-                motivo(resultadoOperacion);
-            // Chequear que la jornada pueda arrancar/seguir
-            finJornada = jornadaTerminada(&puerto);
-            if(finJornada != TODO_OK)
-                printf("\nNo queda nada por hacer\n");
+            if(hayOperacionValida(&puerto, tiempoActual, &configuracion) == REVISAR_EVENTOS)
+            {
+                skipearTiempo = haySkipAProximoEvento(&puerto, &tiempoActual, &configuracion);
+                if(skipearTiempo == ERR_MEMORIA)
+                    fatalError = 1;
+                else
+                {
+                    if(skipearTiempo == NO_HAY_EVENTOS)
+                        finJornada = BLOQUEO_OPERATIVO; // se genera bloqueo porque no hay operacion valida ni proximo evento
+                }
+            }
+            else
+            {
+                // Mostrar los codigos y sus sintaxis
+                mostrarOperaciones();
+
+                // Ingreso de operacion
+                printf("\nOPERADOR> ");
+                ingresarTexto(MAX_CODIGO, operacion);
+                // Validacion de la operacion ingresada
+                validez = validarOperacion(operacion);
+
+                // Si no es valida, vuelve a pedir y vuelve a evaluar validez
+                while(validez != 's')
+                {
+                    printf("\nOperacion invalida.");
+                    printf("\nOPERADOR> ");
+                    ingresarTexto(MAX_CODIGO, operacion);
+                    validez = validarOperacion(operacion);
+                }
+
+                resultadoOperacion = ejecutarOperacion(operacion, &puerto, &tiempoActual, &configuracion, &varsResumen);
+                if(resultadoOperacion == ERR_MEMORIA)
+                    fatalError = 1;
+                else
+                {
+                    if(resultadoOperacion!= TODO_OK)
+                        motivo(resultadoOperacion);
+                }
+            }
         }
     }
 
-    printf("\n*\n*\n*\n* Finalizando...\n*\n*\n*\n");
+    if(finJornada == BLOQUEO_OPERATIVO)
+        printf("\n\nOcurrio un bloqueo operativo. Lo vamos a hablar con tu jefe.\n");
+    if(finJornada == TODO_OK && !fatalError)
+        printf("\n\nYa podes irte a casa, la jornada finalizo.\n");
 
     /// RESPUESTA(20) -> se crea evento operador inicial y final para manejar arboles y sesion
     /// REVISAR(21) -> pendiente los cierres del operador y fichar los eventos de la jornada en archivo jornada
@@ -189,6 +206,7 @@ int main()
         varsResumen.puntuacionFinal -= 2*varsResumen.camionesPendientes;
         operador.puntajeTotal += varsResumen.puntuacionFinal;
     }
+    printf("\n*\n*\n*\n* Cerrando numeros...\n*\n*\n*\n");
     eventoOperadorFin(archOperadores, archJornadas, archIndice, &operador, &arbol, &nuevoOperador);
 
     eliminarArbol(&arbol);
