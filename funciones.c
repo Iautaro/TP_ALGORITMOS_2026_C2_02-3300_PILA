@@ -119,17 +119,35 @@ int leerConfiguracion(FILE* arch, tConfig* configuracion)
 
 /// Apertura del archivo o creacion del archivo si no existe
 // modifico esta funcion para poder observar si creo o abrio
-int abrirOCrearArchivo(const char* nomArch, FILE **arch)
+int abrirOCrearArchivo(const char* nomArch, FILE **arch, char modo)
 {
-    *arch = fopen(nomArch, "r+t");
-    if (!*arch)
+    if(modo == 't')
     {
-        *arch = fopen(nomArch, "w+t");
-        if(!*arch)
-            return ERR_ARCHIVO;
-        return ARCH_CREACION;
+        *arch = fopen(nomArch, "r+t");
+        if (!*arch)
+        {
+            *arch = fopen(nomArch, "w+t");
+            if(!*arch)
+                return ERR_ARCHIVO;
+            return ARCH_CREACION;
+        }
+        return ARCH_APERTURA;
     }
-    return ARCH_APERTURA;
+    if(modo == 'b')
+    {
+        *arch = fopen(nomArch, "r+b");
+        if (!*arch)
+        {
+            *arch = fopen(nomArch, "w+b");
+            if(!*arch)
+                return ERR_ARCHIVO;
+            return ARCH_CREACION;
+        }
+        return ARCH_APERTURA;
+    }
+
+    return MODO_INVALIDO;
+
 }
 
 /// Crear el archivo puerto.txt y llenarlo de forma aleatoria cada pasada
@@ -269,7 +287,7 @@ int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuraci
         i++;
     }
     // Ordenar el vector de camiones por tiempo de llegada
-    qsort(camiones, configuracion->maximoCamiones, sizeof(tCamion), cmpTiempo);
+    qsort(camiones, i, sizeof(tCamion), cmpTiempo);
 
     // Registrar los camiones
     fprintf(archPuerto, "\n");
@@ -291,7 +309,6 @@ int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuraci
         sprintf(((puerto->muelles + i)->codMuelle), "M%d", i + 1);
     if(crearZonas(&puerto->zonas, configuracion->cantidadZonasAlmacenamiento, configuracion->capacidadPila) != TODO_OK)
     {
-        free(puerto->muelles);
         free(tiemposBuques);
         free(camiones);
         return ERR_MEMORIA;
@@ -514,7 +531,7 @@ int ejecutarDES( tMuelle *muelle, tZona *zonaDest, tContenedor *contenedor_desca
 
     //desacolar( &((*muelle).buqueAct->cont_pend), contenedor_descarga, sizeof(tContenedor));
     sacarDePila(&(*muelle).buqueAct->cont_pend, contenedor_descarga, sizeof(tContenedor)); // implementado con pila
-    ponerEnPila( &zonaDest->contenedores, contenedor_descarga, sizeof(tContenedor));
+    ponerEnPila(&zonaDest->contenedores, contenedor_descarga, sizeof(tContenedor));
 
     // Contador de zona
     zonaDest->cantActual++;
@@ -585,7 +602,6 @@ int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int* tiempoAct, tCo
 
     resumen->puntuacionFinal += operacion.puntuacion;     // realiza suma de puntuación por cada operación finalizada
     operacion.tiempoDeFinalizacion = *tiempoAct;         // registro tiempo de finalizacion de operacion
-
 
     escribirJornadaMed(fp, &operacion, comando, zonaOrigen->codZona, zonaDestino->codZona);
 
@@ -877,13 +893,12 @@ int realizarEventos(tPuerto *puerto, tOperacion *operacion, int *temporizador)
 
     while(*temporizador < tiempoFin)
     {
+        (*temporizador)++;
         if((resultado = vigiladorBuques(puerto, *temporizador))!=TODO_OK)// llegada buques
             return resultado;
 
         if((resultado = vigiladorCamiones(puerto, *temporizador))!=TODO_OK) // llegada camiones
             return resultado;
-
-        (*temporizador)++;
     }
     return TODO_OK;
 }
@@ -925,12 +940,6 @@ int vigiladorCamiones(tPuerto *puerto, const int temporizador)
 
 int asignarMuelle(tBuque *buque, tMuelle *muelle, int cantMuelles)
 {
-    /// REVISAR -> terminar esto una vez se aclara lo del muelle
-    /*
-        recorrido es facil, necesito preguntar por cada muelle si hay espacio
-        si encuentro asigno dicho muelle
-        en caso de llegar al final marco que no hay espacio
-    */
     int i = 0;
     int encontrado = 0;
     while(i < cantMuelles && !encontrado)
@@ -1040,6 +1049,7 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
             free(muelleDestino->buqueAct);
             muelleDestino->buqueAct = NULL;
             resumen->buquesDescargados++;
+            asignarEsperando(puerto);
         }/*
         if( resultado != OP_EXITO)
         {
@@ -1047,7 +1057,6 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
             return resultado;
         }*/
         //printf("Contenedor %s colocado en zona %s\n", contenedorDescargado.id,zonaDestino->codZona);
-
         strcpy(operacion->codigoContenedor,contenedorDescargado.id);
         return OP_EXITO;
     }
@@ -1065,7 +1074,7 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
             return resultado;
         }
         printf(" El contenedor %s ha sido reubicado en la zona %s desde %s.\n", contenedor_reubicar.id, zonaDestino->codZona, zonaOrigen->codZona);
-
+        resumen->reorganizaciones++;
         strcpy(operacion->codigoContenedor,contenedor_reubicar.id);
     }
 
@@ -1082,9 +1091,10 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
     {
         tContenedor contenedor_entregado;
         int resultado = ejecutarENT(puerto, &contenedor_entregado);              /// REVISAR -> lo que se manda no va a tener sentido, revisar que mandar para que sirva y como procesar lo que hace y devuelve
-        if(resultado != TODO_OK)                        /// RESPUESTA -> dejamos todo dentro de ejecutarENT, se sacan datos de puerto, se corrije manejo de cola para respetar TDA
+        if(resultado != TODO_OK)                                                 /// RESPUESTA -> dejamos todo dentro de ejecutarENT, se sacan datos de puerto, se corrije manejo de cola para respetar TDA
             return resultado;
         operacion->puntuacion = 10;
+        resumen->contenedoresEntregados++;
         strcpy(operacion->codigoContenedor,contenedor_entregado.id);
         break;
     }
@@ -1133,11 +1143,11 @@ int ejecutarENT(tPuerto *puerto, tContenedor *contenedor_entregado)
     {
         return ERROR_PILA;
     }
-    zonaContenedor->cantActual--;                                                                       // le saco un contenedor
-    strcpy(contenedor_entregado->id,camionFrente.codigoContenedor);                                      // guardo codigo de contenedor
+    zonaContenedor->cantActual--;
+    strcpy(contenedor_entregado->id,camionFrente.codigoContenedor);                                      // guardo codigo de contenedor                                                                     // le saco un contenedor
     if(sacarDeCola(&puerto->camionesEsperando, &camionFrente, sizeof(tCamion)) != TODO_OK )
     {
-        return ERROR_COLA;
+        return ERROR_PILA;
     }
 
     return TODO_OK;
@@ -1146,25 +1156,25 @@ int ejecutarENT(tPuerto *puerto, tContenedor *contenedor_entregado)
 int eventoOperadorIni(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador)
 {
     int modoAperturaOperador = 0;
-    int modoAperturaJornada = 0;
     int modoAperturaIndice = 0;
+    int modoAperturaJornada = 0;
 
-    modoAperturaOperador = abrirOCrearArchivo("operadores.txt", fpOperador);
-    if(!*fpOperador)
+    modoAperturaOperador = abrirOCrearArchivo("operadores.dat", fpOperador, 'b');
+    if(modoAperturaOperador == ERR_ARCHIVO || modoAperturaOperador == MODO_INVALIDO)
     {
-        printf("\n%d\n", modoAperturaOperador);
+        printf("\nError: %d\n", modoAperturaOperador);
         puts("Error al abrir archivo de operadores.\n");
         return ERR_ARCHIVO;
     }
-    modoAperturaJornada = abrirOCrearArchivo("jornadas.txt", fpJornada);
-    if(!*fpJornada)
+    modoAperturaJornada = abrirOCrearArchivo("jornadas.txt", fpJornada, 't');
+    if(modoAperturaJornada == ERR_ARCHIVO || modoAperturaJornada == MODO_INVALIDO)
     {
         puts("Error al abrir archivo de jornadas.\n");
         fclose(*fpOperador);
         return ERR_ARCHIVO;
     }
-    modoAperturaIndice = abrirOCrearArchivo("operadores.idx", fpIndice);
-    if(!*fpIndice)
+    modoAperturaIndice = abrirOCrearArchivo("operadores.idx", fpIndice, 'b');
+    if(modoAperturaIndice == ERR_ARCHIVO || modoAperturaIndice == MODO_INVALIDO)
     {
         puts("Error al abrir archivo indice.\n");
         fclose(*fpOperador);
@@ -1194,6 +1204,29 @@ int eventoOperadorIni(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOpe
     }
 
     escribirJornadaIni(fpJornada, &modoAperturaJornada);
+
+    return TODO_OK;
+}
+
+int eventoOperadorFin(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador, tResumen *resumen, int *error)
+{
+    if(*nuevoOperador)
+    {
+        fseek(*fpOperador, 0, SEEK_END);
+        fwrite(operador,sizeof(tOperador),1,*fpOperador); // escribimos nuevo operador en archivo directo
+        fflush(*fpOperador);
+        rewind(*fpOperador);
+        indexarArchivoOperador(*fpOperador, arbol);          // cargamos arbol con archivo, esperamos desordenado en mayoria
+        guardarIndiceEnArchivoPreOrden(arbol, *fpIndice);    // lo guardamos PreOrden
+                                                            // el archivo indice ya queda ordenado
+                                                            // para proximas jornadas
+    }
+    else
+    {
+        guardarEnArchivoConIndice(*fpOperador, arbol, operador); // guardamos archivo
+    }
+
+    escribirJornadaFin(fpJornada, resumen, error, operador);
 
     return TODO_OK;
 }
@@ -1265,25 +1298,6 @@ void escribirJornadaFin(FILE **fp, tResumen *res, int *error, tOperador *o)     
     }
 }
 
-int eventoOperadorFin(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador, tResumen *resumen, int *error)
-{
-    if(*nuevoOperador)
-    {
-        fwrite(operador,sizeof(tOperador),1,*fpOperador);    // escribimos nuevo operador en archivo directo
-        indexarArchivoOperador(*fpOperador, arbol);          // cargamos arbol con archivo, esperamos desordenado en mayoria
-        guardarIndiceEnArchivoInOrden(arbol, *fpIndice);     // lo guardamos InOrden
-                                                            // el archivo indice ya queda ordenado
-                                                            // para proximas jornadas
-    }
-    else
-    {
-        guardarEnArchivoConIndice(*fpOperador, arbol, operador); // guardamos archivo
-    }
-
-    escribirJornadaFin(fpJornada, resumen, error, operador);
-
-    return TODO_OK;
-}
 
 int crearZonas(tLista *zonas, unsigned cantZonas, unsigned capacidad)
 {
@@ -1399,4 +1413,35 @@ void motivo(int codigo)
     default:
         printf("\nOperacion rechazada (codigo %d).\n", codigo);
     }
+}
+
+int asignarEsperando(tPuerto *puerto)
+{
+    tBuque buque;
+    while(verPrimeroCola(&puerto->buquesEsperando, &buque, sizeof(tBuque)) == TODO_OK && asignarMuelle(&buque, puerto->muelles, puerto->cantMuelles) == TODO_OK)
+    {
+        sacarDeCola(&puerto->buquesEsperando, &buque, sizeof(tBuque));
+    }
+
+    return TODO_OK;
+}
+
+int jornadaTerminada(tPuerto *puerto)
+{
+    int i;
+
+    if(!colaVacia(&puerto->buquesArchivo)||!colaVacia(&puerto->camionesArchivo)||!colaVacia(&puerto->buquesEsperando)||!colaVacia(&puerto->camionesEsperando))
+        return TODO_OK;
+    for(i = 0; i < puerto->cantMuelles; i++)
+    {
+        if((puerto->muelles + i)->buqueAct != NULL)
+            return TODO_OK;
+    }
+    return FIN_JORNADA;
+}
+
+int hayOperacionValida(tPuerto *puerto, int tiempoAct, const tConfig *config)
+{
+    // pendiente
+    return TODO_OK;
 }
