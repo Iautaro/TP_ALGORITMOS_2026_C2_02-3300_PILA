@@ -633,14 +633,13 @@ int ejecutarREU( tZona* zonaOrigen, tZona* zonaDest, tContenedor* contenedor_des
     {
         return ZONA_ORIGEN_VACIA;
     }*/
-    if(pilaVacia(&(zonaOrigen->contenedores)))
-    {
-        return ZONA_ORIGEN_VACIA;
-    }
-
     if( strcmp(zonaOrigen->codZona, zonaDest->codZona) == 0 )
     {
         return ZONAS_IGUALES;
+    }
+    if(pilaVacia(&(zonaOrigen->contenedores)))
+    {
+        return ZONA_ORIGEN_VACIA;
     }
 
     if( zonaDest->cantActual >= zonaDest->capacMax)
@@ -1073,7 +1072,7 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
         int resultado = ejecutarREU(zonaOrigen, zonaDestino, &contenedor_reubicar);
         if(resultado != TODO_OK)
         {
-            printf("Error: %d\n", resultado);
+            //printf("Error: %d\n", resultado);
             return resultado;
         }
         printf(" El contenedor %s ha sido reubicado en la zona %s desde %s.\n", contenedor_reubicar.id, zonaDestino->codZona, zonaOrigen->codZona);
@@ -1091,9 +1090,13 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
 
     case OPERACION_ENT:
     {
-        int resultado = ejecutarENT(puerto);              /// REVISAR -> lo que se manda no va a tener sentido, revisar que mandar para que sirva y como procesar lo que hace y devuelve
+        tCamion camionAtendido;
+        tZona *zonaContenedor = NULL;
+        int resultado = ejecutarENT(puerto, &camionAtendido,&zonaContenedor);              /// REVISAR -> lo que se manda no va a tener sentido, revisar que mandar para que sirva y como procesar lo que hace y devuelve
         if(resultado != TODO_OK)                        /// RESPUESTA -> dejamos todo dentro de ejecutarENT, se sacan datos de puerto, se corrije manejo de cola para respetar TDA
             return resultado;
+        printf("Camion %s cargo el contenedor %s proveniente de zona %s. Abandona puerto.\n", camionAtendido.codigoCamion,
+               camionAtendido.codigoContenedor, zonaContenedor->codZona);
         operacion->puntuacion = 10;
         resumen->contenedoresEntregados++;
         break;
@@ -1122,29 +1125,30 @@ void ejecutarESP()
 
 }
 
-int ejecutarENT( tPuerto* puerto)
+//int ejecutarENT( tPuerto* puerto)
+int ejecutarENT( tPuerto* puerto, tCamion* camionAtendido, tZona** zonaOrigen)
 {
-    tCamion camionFrente;
-
+    //tCamion camionFrente;
+    tContenedor contenedor;
     //if( puerto->camionesEsperando.pri  == NULL )
     if(colaVacia(&(puerto->camionesEsperando)))                                                          // verifico existencia de camiones
         return NO_HAY_CAMIONES;
 
     //tCamion *camionFrente = (tCamion*)puerto->camionesEsperando.pri->info;                            // contenedor solicitado por camion atendido
-    verPrimeroCola(&(puerto->camionesEsperando), &camionFrente, sizeof(tCamion));
+    verPrimeroCola(&(puerto->camionesEsperando), camionAtendido, sizeof(tCamion));
 
-    tZona *zonaContenedor = buscarZonaTope(puerto->zonas, camionFrente.codigoContenedor);               // busco zona donde este contenedor ej C101
-    if( zonaContenedor == NULL)
+    *zonaOrigen = buscarZonaTope(puerto->zonas, camionAtendido->codigoContenedor);               // busco zona donde este contenedor ej C101
+    if( *zonaOrigen == NULL)
     {
         return CONTENEDOR_NO_DISPONIBLE;
     }
 
-    if(sacarDePila(&zonaContenedor->contenedores, camionFrente.codigoContenedor, sizeof(tContenedor)) !=  TODO_OK )
+    if(sacarDePila(&(*zonaOrigen)->contenedores, &contenedor, sizeof(tContenedor)) !=  TODO_OK )
     {
         return ERROR_PILA;
     }
-    zonaContenedor->cantActual--;                                                                       // le saco un contenedor
-    if(sacarDeCola(&puerto->camionesEsperando, &camionFrente, sizeof(tCamion)) != TODO_OK )
+    (*zonaOrigen)->cantActual--;                                                                       // le saco un contenedor
+    if(sacarDeCola(&puerto->camionesEsperando, camionAtendido, sizeof(tCamion)) != TODO_OK )
     {
         return ERROR_PILA;
     }
@@ -1328,7 +1332,7 @@ void motivo(int codigo)
         printf("\nLa zona de origen esta vacia\n");
         break;
     case ZONAS_IGUALES:
-        printf("\nLas zonas deben ser distintas.n");
+        printf("\nLas zonas deben ser distintas.\n");
         break;
     case NO_HAY_CAMIONES:
         printf("\nNo hay camiones esperando\n");
