@@ -1107,15 +1107,19 @@ if( resultado != OP_EXITO)
 
     case OPERACION_ENT:
     {
-        tContenedor contenedor_entregado;
-        int resultado = ejecutarENT(puerto, &contenedor_entregado);              /// REVISAR -> lo que se manda no va a tener sentido, revisar que mandar para que sirva y como procesar lo que hace y devuelve
-        if(resultado != TODO_OK)                                                 /// RESPUESTA -> dejamos todo dentro de ejecutarENT, se sacan datos de puerto, se corrije manejo de cola para respetar TDA
+        tCamion camionAtendido;
+        tZona *zonaContenedor = NULL;
+        int resultado = ejecutarENT(puerto, &camionAtendido,&zonaContenedor);              /// REVISAR -> lo que se manda no va a tener sentido, revisar que mandar para que sirva y como procesar lo que hace y devuelve
+        if(resultado != TODO_OK)                        /// RESPUESTA -> dejamos todo dentro de ejecutarENT, se sacan datos de puerto, se corrije manejo de cola para respetar TDA
             return resultado;
+        printf("Camion %s cargo el contenedor %s proveniente de zona %s. Abandona puerto.\n", camionAtendido.codigoCamion,
+               camionAtendido.codigoContenedor, zonaContenedor->codZona);
         operacion->puntuacion = 10;
         resumen->contenedoresEntregados++;
-        strcpy(operacion->codigoContenedor,contenedor_entregado.id);
+        strcpy(operacion->codigoContenedor,camionAtendido.codigoContenedor);
         break;
     }
+
 
     break;
 
@@ -1135,30 +1139,30 @@ if( resultado != OP_EXITO)
     return TODO_OK;
 }
 
-int ejecutarENT(tPuerto *puerto, tContenedor *contenedor_entregado)
+//int ejecutarENT( tPuerto* puerto)
+int ejecutarENT( tPuerto* puerto, tCamion* camionAtendido, tZona** zonaOrigen)
 {
-    tCamion camionFrente;
-
+    //tCamion camionFrente;
+    tContenedor contenedor;
     //if( puerto->camionesEsperando.pri  == NULL )
     if(colaVacia(&(puerto->camionesEsperando)))                                                          // verifico existencia de camiones
         return NO_HAY_CAMIONES;
 
     //tCamion *camionFrente = (tCamion*)puerto->camionesEsperando.pri->info;                            // contenedor solicitado por camion atendido
-    verPrimeroCola(&(puerto->camionesEsperando), &camionFrente, sizeof(tCamion));
+    verPrimeroCola(&(puerto->camionesEsperando), camionAtendido, sizeof(tCamion));
 
-    tZona *zonaContenedor = buscarZonaTope(puerto->zonas, camionFrente.codigoContenedor);               // busco zona donde este contenedor ej C101
-    if( zonaContenedor == NULL)
+    *zonaOrigen = buscarZonaTope(puerto->zonas, camionAtendido->codigoContenedor);               // busco zona donde este contenedor ej C101
+    if( *zonaOrigen == NULL)
     {
         return CONTENEDOR_NO_DISPONIBLE;
     }
 
-    if(sacarDePila(&zonaContenedor->contenedores, camionFrente.codigoContenedor, sizeof(tContenedor)) !=  TODO_OK )
+    if(sacarDePila(&(*zonaOrigen)->contenedores, &contenedor, sizeof(tContenedor)) !=  TODO_OK )
     {
         return ERROR_PILA;
     }
-    zonaContenedor->cantActual--;
-    strcpy(contenedor_entregado->id,camionFrente.codigoContenedor);                                      // guardo codigo de contenedor                                                                     // le saco un contenedor
-    if(sacarDeCola(&puerto->camionesEsperando, &camionFrente, sizeof(tCamion)) != TODO_OK )
+    (*zonaOrigen)->cantActual--;                                                                       // le saco un contenedor
+    if(sacarDeCola(&puerto->camionesEsperando, camionAtendido, sizeof(tCamion)) != TODO_OK )
     {
         return ERROR_PILA;
     }

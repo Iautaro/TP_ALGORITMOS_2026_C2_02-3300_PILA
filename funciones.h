@@ -111,7 +111,7 @@ int asignarEsperando(tPuerto* puerto);
 
 int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int* tiempoAct, tConfig* config, tResumen *resumen, FILE **fp);
 int ejecutarDES( tMuelle *muelle, tZona *zonaDest, tContenedor *contenedor_descarga); // ejecuta descarga
-int ejecutarENT(tPuerto *puerto, tContenedor *contenedor_entregado);
+int ejecutarENT( tPuerto* puerto, tCamion* camionAtendido, tZona** zonaOrigen);
 int ejecutarREU( tZona* zonaOrigen, tZona* zonaDest, tContenedor* contenedor_desc);
 void ejecutarVER( tPuerto* puerto, int tiempoActual, int puntuacionProv);
 // void ejecutarESP(); ya no se usa
