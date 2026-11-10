@@ -21,6 +21,7 @@ int main()
     FILE* archIndice = NULL;
     FILE* archRanking = NULL;
     int resultadoEleccion = 0;
+    int eleccion = 0;
     tOperador operador;
     tArbol arbol;
     printf("Trabajo Practico Puerto de Contenedores - Operacion Contrarreloj\n\n\n");
@@ -139,7 +140,7 @@ int main()
     /// Menu principal
     mostrarMenu();
     printf("\nOPERADOR> ");
-    while(resultadoEleccion != SALIR || resultadoEleccion != INICIAR || !fatalError)
+    while(eleccion != SALIR && eleccion != INICIAR && !fatalError)
     {
         ingresarTexto(MAX_CODIGO, operacion);
         validez = validarEleccion(operacion);
@@ -150,7 +151,7 @@ int main()
             ingresarTexto(MAX_CODIGO, operacion);
             validez = validarEleccion(operacion);
         }
-        resultadoEleccion = ejecutarEleccion(operacion, &archJornadas);
+        resultadoEleccion = ejecutarEleccion(operacion, &archJornadas, &eleccion);
         if(resultadoEleccion == ERR_MEMORIA)
             fatalError = 1;
         else
@@ -159,7 +160,8 @@ int main()
                 motivo(resultadoEleccion);
         }
     }
-
+    if(eleccion == SALIR)
+        return TODO_OK;
 
     /// While principal de jornada
     // son varios if anidados para evitar que se ejecute codigo en caso de errores, ya que no puedo cortar el while

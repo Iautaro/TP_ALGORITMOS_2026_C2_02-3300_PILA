@@ -1570,7 +1570,7 @@ char validarEleccion(char* operacion)
     // Reviso que sea una operacion posible
     int c;
     char encontrado = 'n';
-    for(c = 0; c < CANT_COMANDOS; c++)
+    for(c = 0; c < CANT_COMANDOS_MENU; c++)
     {
         if(strcmp(comando, *(comandosValidos+c) ) == 0)
             encontrado = 's';
@@ -1586,21 +1586,23 @@ char validarEleccion(char* operacion)
     return encontrado;
 }
 
-int ejecutarEleccion(char *entradaUsuario, FILE **fp)
+int ejecutarEleccion(char *entradaUsuario, FILE **fp, int *eleccion)
 {
     char aux[MAX_CODIGO];
     strcpy(aux, entradaUsuario);
     char *comando = strtok(aux, " \n\0");
-    int resultado;
+    int resultado = TODO_OK;
 
-    resultado = detectarEleccion(comando);
+    *eleccion = detectarEleccion(comando);
 
-    if(resultado == RANKING)
+    if(*eleccion == RANKING)
     {
-        realizarRanking(fp);
+        resultado = realizarRanking(fp);
     }
+    if(resultado != TODO_OK)
+        return resultado;
 
-    return resultado;
+    return TODO_OK;
 }
 
 int detectarEleccion(const char* comando)

@@ -152,7 +152,7 @@ void escribirJornadaFin(FILE **fp, tResumen *res, int *error, tOperador *o);
 
 void mostrarMenu();
 char validarEleccion(char* operacion);
-int ejecutarEleccion(char *entradaUsuario, FILE **fp);
+int ejecutarEleccion(char *entradaUsuario, FILE **fp, int *eleccion);
 int detectarEleccion(const char* comando);
 int realizarRanking(FILE **fp);
 

@@ -16,6 +16,7 @@
 #define MAX_LINEA_CONFIG 35
 #define MAX_CODIGO 12
 #define CANT_COMANDOS 5
+#define CANT_COMANDOS_MENU 3
 
 #define TODO_OK 0
 #define MUELLE_VACIO 1
