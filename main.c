@@ -177,7 +177,7 @@ int main()
                     validez = validarOperacion(operacion);
                 }
 
-                resultadoOperacion = ejecutarOperacion(operacion, &puerto, &tiempoActual, &configuracion, &varsResumen);
+                resultadoOperacion = ejecutarOperacion(operacion, &puerto, &tiempoActual, &configuracion, &varsResumen, &archJornadas);
                 if(resultadoOperacion == ERR_MEMORIA)
                     fatalError = 1;
                 else
@@ -207,7 +207,8 @@ int main()
         operador.puntajeTotal += varsResumen.puntuacionFinal;
     }
     printf("\n*\n*\n*\n* Cerrando numeros...\n*\n*\n*\n");
-    eventoOperadorFin(archOperadores, archJornadas, archIndice, &operador, &arbol, &nuevoOperador);
+    eventoOperadorFin(&archOperadores, &archJornadas, &archIndice, &operador, &arbol, &nuevoOperador, &varsResumen, &fatalError);
+
 
     eliminarArbol(&arbol);
     fclose(archJornadas);

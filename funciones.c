@@ -568,7 +568,7 @@ int validarCantidad( int leidos, int cant_esperada)
     return TODO_OK;
 }
 
-int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int* tiempoAct, tConfig* config, tResumen *resumen)
+int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int* tiempoAct, tConfig* config, tResumen *resumen, FILE **fp)
 {
     tOperacion operacion;
     char aux[MAX_CODIGO];
@@ -602,6 +602,8 @@ int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int* tiempoAct, tCo
 
     resumen->puntuacionFinal += operacion.puntuacion;     // realiza suma de puntuación por cada operación finalizada
     operacion.tiempoDeFinalizacion = *tiempoAct;         // registro tiempo de finalizacion de operacion
+
+    escribirJornadaMed(fp, &operacion, comando, zonaOrigen->codZona, zonaDestino->codZona);
 
     return OP_EXITO;
 }
@@ -938,12 +940,6 @@ int vigiladorCamiones(tPuerto *puerto, const int temporizador)
 
 int asignarMuelle(tBuque *buque, tMuelle *muelle, int cantMuelles)
 {
-    /// REVISAR -> terminar esto una vez se aclara lo del muelle
-    /*
-        recorrido es facil, necesito preguntar por cada muelle si hay espacio
-        si encuentro asigno dicho muelle
-        en caso de llegar al final marco que no hay espacio
-    */
     int i = 0;
     int encontrado = 0;
     while(i < cantMuelles && !encontrado)
@@ -1061,6 +1057,7 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
             return resultado;
         }*/
         //printf("Contenedor %s colocado en zona %s\n", contenedorDescargado.id,zonaDestino->codZona);
+        strcpy(operacion->codigoContenedor,contenedorDescargado.id);
         return OP_EXITO;
     }
 
@@ -1078,6 +1075,7 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
         }
         printf(" El contenedor %s ha sido reubicado en la zona %s desde %s.\n", contenedor_reubicar.id, zonaDestino->codZona, zonaOrigen->codZona);
         resumen->reorganizaciones++;
+        strcpy(operacion->codigoContenedor,contenedor_reubicar.id);
     }
 
     break;
@@ -1091,11 +1089,13 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
 
     case OPERACION_ENT:
     {
-        int resultado = ejecutarENT(puerto);              /// REVISAR -> lo que se manda no va a tener sentido, revisar que mandar para que sirva y como procesar lo que hace y devuelve
-        if(resultado != TODO_OK)                        /// RESPUESTA -> dejamos todo dentro de ejecutarENT, se sacan datos de puerto, se corrije manejo de cola para respetar TDA
+        tContenedor contenedor_entregado;
+        int resultado = ejecutarENT(puerto, &contenedor_entregado);              /// REVISAR -> lo que se manda no va a tener sentido, revisar que mandar para que sirva y como procesar lo que hace y devuelve
+        if(resultado != TODO_OK)                                                 /// RESPUESTA -> dejamos todo dentro de ejecutarENT, se sacan datos de puerto, se corrije manejo de cola para respetar TDA
             return resultado;
         operacion->puntuacion = 10;
         resumen->contenedoresEntregados++;
+        strcpy(operacion->codigoContenedor,contenedor_entregado.id);
         break;
     }
 
@@ -1117,7 +1117,7 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
     return TODO_OK;
 }
 
-int ejecutarENT( tPuerto* puerto)
+int ejecutarENT(tPuerto *puerto, tContenedor *contenedor_entregado)
 {
     tCamion camionFrente;
 
@@ -1138,7 +1138,8 @@ int ejecutarENT( tPuerto* puerto)
     {
         return ERROR_PILA;
     }
-    zonaContenedor->cantActual--;                                                                       // le saco un contenedor
+    zonaContenedor->cantActual--;
+    strcpy(contenedor_entregado->id,camionFrente.codigoContenedor);                                      // guardo codigo de contenedor                                                                     // le saco un contenedor
     if(sacarDeCola(&puerto->camionesEsperando, &camionFrente, sizeof(tCamion)) != TODO_OK )
     {
         return ERROR_PILA;
@@ -1197,31 +1198,101 @@ int eventoOperadorIni(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOpe
         operador->puntajeTotal = 0;                                                     // inicializamos su puntaje
     }
 
+    escribirJornadaIni(fpJornada, &modoAperturaJornada);
+
     return TODO_OK;
 }
 
-int eventoOperadorFin(FILE *fpOperador, FILE *fpJornada, FILE *fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador)
+int eventoOperadorFin(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador, tResumen *resumen, int *error)
 {
     if(*nuevoOperador)
     {
-        fseek(fpOperador, 0, SEEK_END);
-        fwrite(operador,sizeof(tOperador),1,fpOperador); // escribimos nuevo operador en archivo directo
-        fflush(fpOperador);
-        rewind(fpOperador);
-        indexarArchivoOperador(fpOperador, arbol);          // cargamos arbol con archivo, esperamos desordenado en mayoria
-        guardarIndiceEnArchivoPreOrden(arbol, fpIndice);    // lo guardamos PreOrden
+        fseek(*fpOperador, 0, SEEK_END);
+        fwrite(operador,sizeof(tOperador),1,*fpOperador); // escribimos nuevo operador en archivo directo
+        fflush(*fpOperador);
+        rewind(*fpOperador);
+        indexarArchivoOperador(*fpOperador, arbol);          // cargamos arbol con archivo, esperamos desordenado en mayoria
+        guardarIndiceEnArchivoPreOrden(arbol, *fpIndice);    // lo guardamos PreOrden
                                                             // el archivo indice ya queda ordenado
                                                             // para proximas jornadas
     }
     else
     {
-        guardarEnArchivoConIndice(fpOperador, arbol, operador); // guardamos archivo
+        guardarEnArchivoConIndice(*fpOperador, arbol, operador); // guardamos archivo
     }
 
-    /// REVISAR -> nos queda revisar jornada y ranking en archivo
+    escribirJornadaFin(fpJornada, resumen, error, operador);
 
     return TODO_OK;
 }
+
+/**
+    Como quedaría jornada guardada en archivo:
+
+    [JORNADA]
+    Jornada Nº(numero)
+    [HISTORIAL DE JORNADA]
+    Tiempo de inicio:(numero)|Tiempo de finalizacion:(numero)|Cod operacion:(cadena char)|Contenedor:(cadena char)|Recurso origen:(cadena char)|Recurso destino:(cadena char) (esto es historial jornada)
+    Tiempo de inicio:(numero)|Tiempo de finalizacion:(numero)|Cod operacion:(cadena char)|Contenedor:(cadena char)|Recurso origen:(cadena char)|Recurso destino:(cadena char) (esto es historial jornada)
+    Tiempo de inicio:(numero)|Tiempo de finalizacion:(numero)|Cod operacion:(cadena char)|Contenedor:(cadena char)|Recurso origen:(cadena char)|Recurso destino:(cadena char) (esto es historial jornada)
+    [ESTADISTICA DE JORNADA]
+    "Operador:(cadena char)|Puntuacion final:(numero)|Contenedores entregados:(numero)|Buques descargados:(numero)|Camiones pendientes:(numero)|Movimientos de reorganización realizados:(numero)|Tiempo utilizado:(numero) (esto es resumen jornada)
+
+*/
+void escribirJornadaIni(FILE **fp, int *modo)                      // inicia la jornada y iniciamos escritura con num de jornada
+{
+    unsigned numeroJornada = 0;
+    char buffer[TAM_LINEA_BUFF_LECTURA];
+    char* ptrBuffer = buffer;
+
+    if(*modo == ARCH_CREACION)                                          // La primera jornada
+    {
+        fprintf(*fp,"[JORNADA]\n");
+        numeroJornada = 1;
+        fprintf(*fp,"Jornada Nº%u\n", numeroJornada);
+    }
+    else                                                                // otras jornadas
+    {
+        while(fgets(buffer, TAM_LINEA_BUFF_LECTURA, *fp))               // busco numero de jornada y avanzo hasta el final
+        {
+            if(strncmp(buffer, "Jornada Nº", 10)==0)
+               numeroJornada = (unsigned)*((ptrBuffer+10)- '0');
+        }
+        fprintf(*fp,"[JORNADA]\n");
+        fprintf(*fp,"Jornada Nº%u\n", numeroJornada);
+    }
+}
+
+///   escribirJornadaMed(fp, operacion, comando, zonaOrigen.codZona, zonaDestino.codZona);
+
+void escribirJornadaMed(FILE **fp, const tOperacion *operacion, const char *comando, const char* zonaOrigen, const char* zonaDestino)                           // avanzamos jornada y guardamos operaciones
+{
+
+    fprintf(*fp,"[HISTORIAL DE JORNADA]\n");
+    fprintf(*fp,"Tiempo de inicio:%u|Tiempo de finalizacion:%u|Cod operacion:%s|Contenedor:%s|Recurso origen:%s|Recurso destino:%s",
+            operacion->tiempoDeCreacion, operacion->tiempoDeFinalizacion,
+            comando,
+            (*(operacion->codigoContenedor) != '0' ? operacion->codigoContenedor : "No Aplica"), // memset lo pone en 0 preguntamos si cambio
+            (zonaOrigen ? zonaOrigen : "No Aplica"),
+            (zonaDestino ? zonaDestino : "No Aplica"));
+}
+
+void escribirJornadaFin(FILE **fp, tResumen *res, int *error, tOperador *o)                       // finalizamos jornada y guardamos estadisticas
+{
+    if(!*error)
+    {
+        fprintf(*fp,"[ESTADISTICA DE JORNADA]\n");
+        fprintf(*fp, "Operador:%s|Puntuacion final:%u|Contenedores entregados:%u|Buques descargados:%u|Camiones pendientes:%u|Movimientos de reorganización realizados:%u|Tiempo utilizado:%u\n",
+                o->nombre,res->puntuacionFinal,res->contenedoresEntregados,res->buquesDescargados,
+                res->camionesPendientes, res->reorganizaciones,
+                res->tiempoUtilizado);
+    }
+    else
+    {
+        fprintf(*fp,"[ERROR EN MEMORIA]\n");
+    }
+}
+
 
 int crearZonas(tLista *zonas, unsigned cantZonas, unsigned capacidad)
 {
@@ -1459,6 +1530,5 @@ int haySkipAProximoEvento(tPuerto* puerto, int* tiempoAct, tConfig* config)
     skip.tiempoPorDefault = proximoEvento - *tiempoAct;
     if(realizarEventos(puerto, &skip, tiempoAct) != TODO_OK)
         return ERR_MEMORIA;
-
     return TODO_OK;
 }

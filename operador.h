@@ -9,6 +9,7 @@ typedef struct
 {
     char nombre[TAM_NOMBRE + 1];
     int puntajeTotal;
+    int jornadasTotal;
 } tOperador;
 
 void mostrarOperador(const tOperador *p);
