@@ -161,7 +161,7 @@ int main()
             validez = validarOperacion(operacion);
         }
 
-        resultadoOperacion = ejecutarOperacion(operacion, &puerto, &tiempoActual, &configuracion, &varsResumen);
+        resultadoOperacion = ejecutarOperacion(operacion, &puerto, &tiempoActual, &configuracion, &varsResumen, &archJornadas);
         if(resultadoOperacion == ERR_MEMORIA)
             fatalError = 1;
         else
@@ -189,7 +189,8 @@ int main()
         varsResumen.puntuacionFinal -= 2*varsResumen.camionesPendientes;
         operador.puntajeTotal += varsResumen.puntuacionFinal;
     }
-    eventoOperadorFin(archOperadores, archJornadas, archIndice, &operador, &arbol, &nuevoOperador);
+    eventoOperadorFin(&archOperadores, &archJornadas, &archIndice, &operador, &arbol, &nuevoOperador, &varsResumen, &fatalError);
+
 
     eliminarArbol(&arbol);
     fclose(archJornadas);
