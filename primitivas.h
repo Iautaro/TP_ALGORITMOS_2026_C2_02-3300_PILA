@@ -75,6 +75,9 @@
 #define OPERACION_ENT 252
 #define OPERACION_REU 253
 #define OPERACION_ESP 254
+#define INICIAR 255
+#define SALIR 256
+#define RANKING 257
 
 #define PILA_VACIA 1
 #define COLA_VACIA 1

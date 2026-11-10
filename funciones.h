@@ -150,4 +150,10 @@ void escribirJornadaIni(FILE **fp, int *modo);
 void escribirJornadaMed(FILE **fp, const tOperacion *operacion, const char *comando, const char* zonaOrigen, const char* zonaDestino);
 void escribirJornadaFin(FILE **fp, tResumen *res, int *error, tOperador *o);
 
+void mostrarMenu();
+char validarEleccion(char* operacion);
+int ejecutarEleccion(char *entradaUsuario, FILE **fp);
+int detectarEleccion(const char* comando);
+int realizarRanking(FILE **fp);
+
 #endif // FUNCIONES_H_INCLUDED

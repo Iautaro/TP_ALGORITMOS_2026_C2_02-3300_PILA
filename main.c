@@ -20,6 +20,7 @@ int main()
     FILE* archJornadas = NULL;
     FILE* archIndice = NULL;
     FILE* archRanking = NULL;
+    int resultadoEleccion = 0;
     tOperador operador;
     tArbol arbol;
     printf("Trabajo Practico Puerto de Contenedores - Operacion Contrarreloj\n\n\n");
@@ -102,12 +103,12 @@ int main()
     }
 
     /// REVISAR(20) -> esto esta pendiente, el 20 es random pero esta linkeado a RESPUESTA(20)
-        /*
-            iniciar sesión de operador (inicio de operaciones / inicio de temporizador)
-            apertura y/o creacion de archivo operadores.txt
-            agregar operador si no existe
-            iniciar_jornada ()	TEMPORIZADOR = 0 M. (revisar si hay buque, camion en tiempo 0)
-        */
+    /*
+        iniciar sesión de operador (inicio de operaciones / inicio de temporizador)
+        apertura y/o creacion de archivo operadores.txt
+        agregar operador si no existe
+        iniciar_jornada ()	TEMPORIZADOR = 0 M. (revisar si hay buque, camion en tiempo 0)
+    */
 
     // Creacion de variable para ingresar operacion
     char* operacion = malloc(MAX_CODIGO);
@@ -135,8 +136,32 @@ int main()
     else
         asignarEsperando(&puerto);
 
+    /// Menu principal
+    mostrarMenu();
+    printf("\nOPERADOR> ");
+    while(resultadoEleccion != SALIR || resultadoEleccion != INICIAR || !fatalError)
+    {
+        ingresarTexto(MAX_CODIGO, operacion);
+        validez = validarEleccion(operacion);
+        while(validez != 's')
+        {
+            printf("\Elección invalida.");
+            printf("\nOPERADOR> ");
+            ingresarTexto(MAX_CODIGO, operacion);
+            validez = validarEleccion(operacion);
+        }
+        resultadoEleccion = ejecutarEleccion(operacion, &archJornadas);
+        if(resultadoEleccion == ERR_MEMORIA)
+            fatalError = 1;
+        else
+        {
+            if(resultadoEleccion!= TODO_OK)
+                motivo(resultadoEleccion);
+        }
+    }
 
-    /// While principal
+
+    /// While principal de jornada
     // son varios if anidados para evitar que se ejecute codigo en caso de errores, ya que no puedo cortar el while
     while(tiempoActual < configuracion.duracionJornadaMinutos && !fatalError && finJornada == TODO_OK)
     {
