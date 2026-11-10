@@ -151,7 +151,7 @@ int main()
             ingresarTexto(MAX_CODIGO, operacion);
             validez = validarEleccion(operacion);
         }
-        resultadoEleccion = ejecutarEleccion(operacion, &archJornadas, &eleccion);
+        resultadoEleccion = ejecutarEleccion(operacion, &archOperadores, &eleccion);
         if(resultadoEleccion == ERR_MEMORIA)
             fatalError = 1;
         else

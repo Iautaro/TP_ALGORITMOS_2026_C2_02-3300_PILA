@@ -498,6 +498,19 @@ int cmpContEnZona(const void* a, const void* b)
     return strcmp(c.id, codCont);
 }
 
+// cmpRanking elige como 'menor' al que tenga mayor puntaje, sino recorrerArbolInOrder hace la vida más complicada
+int cmpRanking(const void *a, const void *b)
+{
+    const tOperador *x = (const tOperador *)a;
+    const tOperador *y = (const tOperador *)b;
+
+    if(x->puntajeTotal > y->puntajeTotal)
+        return -1;
+    if(x->puntajeTotal < y->puntajeTotal)
+        return 1;
+    return strcmp(x->nombre, y->nombre);
+}
+
 int inicializarResumen(tResumen* res)
 {
     if(!res)
@@ -1628,19 +1641,54 @@ int detectarEleccion(const char* comando)
     return TODO_OK;
 }
 
-int realizarRanking(FILE **fp)
+
+static void mostrarFilaRanking(void *info, unsigned tam, unsigned n, void *params)
 {
-    /// realizar mostrar Ranking en pantalla
-    /*
-        paso a paso:
-        crear arbol con indice
-        usar arbol para recorrer y insertar de manera ordenada en lista los operadores
-        una vez finalizado, ejecutar recorrer con accion mostrar en pantalla
-        OJO
-        si recien se creo ranking presentar en pantalla "Ranking sin entradas"
-    */
-    return TODO_OK;
+    const tOperador *op = (const tOperador *)info;
+    unsigned *posicion = (unsigned *)params;
+
+    (*posicion)++;
+    printf("  %3u. %-30s %6d pts\n", *posicion, op->nombre, op->puntajeTotal);
 }
 
+int realizarRanking(FILE **fp)
+{
+    tArbol arbolRanking;
+    tOperador op;
+    unsigned cantidad = 0;
+    unsigned posicion = 0;
+
+    crearArbol(&arbolRanking);
+
+    // leemos todos los operadores guardados y los insertamos ordenados por puntaje
+    fseek(*fp, 0, SEEK_SET);
+    while(fread(&op, sizeof(tOperador), 1, *fp) == 1)
+    {
+        if(insertarArbolBinBusq(&arbolRanking, &op, sizeof(tOperador), cmpRanking) == SIN_MEM)
+        {
+            eliminarArbol(&arbolRanking);
+            fseek(*fp, 0, SEEK_SET);
+            return ERR_MEMORIA;
+        }
+        cantidad++;
+    }
+    fseek(*fp, 0, SEEK_CUR);
+
+    if(cantidad == 0)
+    {
+        printf("\nRanking sin entradas\n");
+        printf("\nOPERADOR> ");
+        return TODO_OK;
+    }
+
+    printf("\n========== RANKING DE OPERADORES ==========\n");
+    recorrerArbolInOrden(&arbolRanking, 0, &posicion, mostrarFilaRanking);
+    printf("===========================================\n");
+
+    eliminarArbol(&arbolRanking);
+    printf("\nOPERADOR> ");
+
+    return TODO_OK;
+}
 
 

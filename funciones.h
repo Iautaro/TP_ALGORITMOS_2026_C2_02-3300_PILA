@@ -145,6 +145,7 @@ void printCont(const void* a);
 
 int cmpZona(const void* a, const void* b);
 int cmpContEnZona(const void* a, const void* b);
+int cmpRanking(const void *a, const void *b);
 
 void escribirJornadaIni(FILE **fp, int *modo);
 void escribirJornadaMed(FILE **fp, const tOperacion *operacion, const char *comando, const char* zonaOrigen, const char* zonaDestino);
