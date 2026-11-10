@@ -94,7 +94,6 @@ int main()
     if((err = eventoOperadorIni(&archOperadores, &archJornadas, &archIndice, &operador, &arbol, &nuevoOperador)) != TODO_OK)
     {
         fclose(archRanking);
-        fclose(archPuerto);
         liberarPuerto(&puerto);
         vaciarCola(&contenedores);
         eliminarArbol(&arbol);
@@ -127,14 +126,22 @@ int main()
     int resultadoOperacion = TODO_OK;
     int tiempoActual = 0;
     int fatalError = 0;
+    int finJornada = 0; // 0 si no es el fin, admite 0, 1 como fin normal y 2 como bloqueo operativo
 
     // por si hay alguno en T=0
     if(vigiladorBuques(&puerto, 0) != TODO_OK || vigiladorCamiones(&puerto, 0) != TODO_OK)
         fatalError = 1;
     else
         asignarEsperando(&puerto);
+
+
     /// While principal
-    while(tiempoActual < configuracion.duracionJornadaMinutos && !fatalError)
+    // Chequear que la jornada pueda arrancar/seguir
+    finJornada = jornadaTerminada(&puerto);
+    if(finJornada != TODO_OK)
+        printf("\nNo queda nada por hacer\n");
+
+    while(tiempoActual < configuracion.duracionJornadaMinutos && !fatalError && finJornada == TODO_OK)
     {
         // Mostrar los codigos y sus sintaxis
         mostrarOperaciones();
@@ -161,9 +168,11 @@ int main()
         {
             if(resultadoOperacion!= TODO_OK)
                 motivo(resultadoOperacion);
+            // Chequear que la jornada pueda arrancar/seguir
+            finJornada = jornadaTerminada(&puerto);
+            if(finJornada != TODO_OK)
+                printf("\nNo queda nada por hacer\n");
         }
-
-
     }
 
     printf("\n*\n*\n*\n* Finalizando...\n*\n*\n*\n");

@@ -287,7 +287,7 @@ int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuraci
         i++;
     }
     // Ordenar el vector de camiones por tiempo de llegada
-    qsort(camiones, configuracion->maximoCamiones, sizeof(tCamion), cmpTiempo);
+    qsort(camiones, i, sizeof(tCamion), cmpTiempo);
 
     // Registrar los camiones
     fprintf(archPuerto, "\n");
@@ -309,7 +309,6 @@ int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuraci
         sprintf(((puerto->muelles + i)->codMuelle), "M%d", i + 1);
     if(crearZonas(&puerto->zonas, configuracion->cantidadZonasAlmacenamiento, configuracion->capacidadPila) != TODO_OK)
     {
-        free(puerto->muelles);
         free(tiemposBuques);
         free(camiones);
         return ERR_MEMORIA;
@@ -1078,7 +1077,7 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
             return resultado;
         }
         printf(" El contenedor %s ha sido reubicado en la zona %s desde %s.\n", contenedor_reubicar.id, zonaDestino->codZona, zonaOrigen->codZona);
-
+        resumen->reorganizaciones++;
     }
 
     break;
@@ -1096,6 +1095,7 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
         if(resultado != TODO_OK)                        /// RESPUESTA -> dejamos todo dentro de ejecutarENT, se sacan datos de puerto, se corrije manejo de cola para respetar TDA
             return resultado;
         operacion->puntuacion = 10;
+        resumen->contenedoresEntregados++;
         break;
     }
 
@@ -1353,4 +1353,23 @@ int asignarEsperando(tPuerto *puerto)
     }
 
     return TODO_OK;
+}
+
+int jornadaTerminada(tPuerto *puerto)
+{
+    int i;
+
+    if(!colaVacia(&puerto->buquesArchivo)||!colaVacia(&puerto->camionesArchivo)||!colaVacia(&puerto->buquesEsperando)||!colaVacia(&puerto->camionesEsperando))
+        return TODO_OK;
+    for(i = 0; i < puerto->cantMuelles; i++)
+    {
+        if((puerto->muelles + i)->buqueAct != NULL)
+            return TODO_OK;
+    }
+    return FIN_JORNADA;
+}
+
+int hayOperacionValida(tPuerto *puerto, int tiempoAct, const tConfig *config)
+{
+    // pendiente
 }

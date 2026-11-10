@@ -131,9 +131,12 @@ int realizarEventos(tPuerto *puerto, tOperacion *operacion, int *temporizador);
 int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDestino, tMuelle *muelleDestino,
                       tPuerto *puerto, int tiempoAct, tResumen *resumen);
 int duracionOperacion(int codOperacion, const tConfig *config);
+int hayOperacionValida(tPuerto *puerto, int tiempoAct, const tConfig *config);
 
 int eventoOperadorIni(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador);
 int eventoOperadorFin(FILE *fpOperador, FILE *fpJornada, FILE *fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador);
+
+int jornadaTerminada(tPuerto *puerto);
 
 void printCamion(const void* a);
 void printZona(const void* a);
