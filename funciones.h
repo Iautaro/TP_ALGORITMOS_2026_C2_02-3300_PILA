@@ -46,7 +46,7 @@ typedef struct
     int tiempoPorDefault;
     int tiempoDeCreacion;
     int tiempoDeFinalizacion;
-    int contenedor;
+    char codigoContenedor[TAM_NOM_CONTENEDOR];
     int recurso;
     int puntuacion;
 } tOperacion;
@@ -88,7 +88,7 @@ typedef struct
 
 // funciones usadas en main.c
 int leerConfiguracion(FILE* arch, tConfig* configuracion);
-int abrirOCrearArchivo(const char* nomArch, FILE **arch, char modo);
+int abrirOCrearArchivo(const char* nomArch, FILE **arch);
 int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuracion, tCola* contenedores, Cmp cmpInt, Cmp cmpTiempo);
 void ingresarTexto(int max, char* texto);
 void mostrarOperaciones();
@@ -107,11 +107,10 @@ tZona* buscarZona(tPuerto *puerto, const char *idBuscado);
 tZona* buscarZonaTope(tLista zonas, const char *codContBuscado);
 tMuelle* buscarMuelle(tPuerto *puerto, const char *idBuscado) ;
 void liberarPuerto(tPuerto *puerto);
-int asignarEsperando(tPuerto *puerto);
 
-int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int* tiempoAct, tConfig* config, tResumen *resumen);
+int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int* tiempoAct, tConfig* config, tResumen *resumen, FILE **fp);
 int ejecutarDES( tMuelle *muelle, tZona *zonaDest, tContenedor *contenedor_descarga); // ejecuta descarga
-int ejecutarENT( tPuerto* puerto);
+int ejecutarENT( tPuerto* puerto, tContenedor *contenedor_entregado);
 int ejecutarREU( tZona* zonaOrigen, tZona* zonaDest, tContenedor* contenedor_desc);
 void ejecutarVER( tPuerto* puerto, int tiempoActual, int puntuacionProv);
 void ejecutarESP();
@@ -131,12 +130,9 @@ int realizarEventos(tPuerto *puerto, tOperacion *operacion, int *temporizador);
 int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDestino, tMuelle *muelleDestino,
                       tPuerto *puerto, int tiempoAct, tResumen *resumen);
 int duracionOperacion(int codOperacion, const tConfig *config);
-int hayOperacionValida(tPuerto *puerto, int tiempoAct, const tConfig *config);
 
 int eventoOperadorIni(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador);
-int eventoOperadorFin(FILE *fpOperador, FILE *fpJornada, FILE *fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador);
-
-int jornadaTerminada(tPuerto *puerto);
+int eventoOperadorFin(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador, tResumen *resumen, int *error);
 
 void printCamion(const void* a);
 void printZona(const void* a);
@@ -144,5 +140,9 @@ void printCont(const void* a);
 
 int cmpZona(const void* a, const void* b);
 int cmpContEnZona(const void* a, const void* b);
+
+void escribirJornadaIni(FILE **fp, int *modo);
+void escribirJornadaMed(FILE **fp, const tOperacion *operacion, const char *comando, const char* zonaOrigen, const char* zonaDestino);
+void escribirJornadaFin(FILE **fp, tResumen *res, int *error, tOperador *o);
 
 #endif // FUNCIONES_H_INCLUDED

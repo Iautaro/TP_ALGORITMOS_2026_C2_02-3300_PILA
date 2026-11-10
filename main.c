@@ -55,8 +55,8 @@ int main()
     }
 
     // Apertura y/o creacion de archivo de ranking
-    err = abrirOCrearArchivo("ranking.txt", &archRanking, 't');
-    if(err == ERR_ARCHIVO || err == MODO_INVALIDO)
+    err = abrirOCrearArchivo("ranking.txt", &archRanking);
+    if(err == ERR_ARCHIVO)
     {
         printf("Error al abrir archivo de ranking\n");
         return err;
@@ -88,12 +88,12 @@ int main()
     /// RESPUESTA(20) -> se crea evento operador inicial y final para manejar arboles y sesion
     /// IMPORTANTE(20) -> el indice tiene mismos campos que el operador, nos queda doble clave para el indice, se puede reducir? o ampliamos
     ///                   caracteristicas de operador para que no quede igual indice y archivo?
-    /// reducimos clave a solo codigo
     // Apertura o creacion de archivos de operador y jornada, tambien es inicio de sesion
     crearArbol(&arbol);
     if((err = eventoOperadorIni(&archOperadores, &archJornadas, &archIndice, &operador, &arbol, &nuevoOperador)) != TODO_OK)
     {
         fclose(archRanking);
+        fclose(archPuerto);
         liberarPuerto(&puerto);
         vaciarCola(&contenedores);
         eliminarArbol(&arbol);
@@ -125,23 +125,10 @@ int main()
     char validez;
     int resultadoOperacion = TODO_OK;
     int tiempoActual = 0;
-    int fatalError = 0;
-    int finJornada = 0; // 0 si no es el fin, admite 0, 1 como fin normal y 2 como bloqueo operativo
-
-    // por si hay alguno en T=0
-    if(vigiladorBuques(&puerto, 0) != TODO_OK || vigiladorCamiones(&puerto, 0) != TODO_OK)
-        fatalError = 1;
-    else
-        asignarEsperando(&puerto);
-
+    int fatalError = TODO_OK;
 
     /// While principal
-    // Chequear que la jornada pueda arrancar/seguir
-    finJornada = jornadaTerminada(&puerto);
-    if(finJornada != TODO_OK)
-        printf("\nNo queda nada por hacer\n");
-
-    while(tiempoActual < configuracion.duracionJornadaMinutos && !fatalError && finJornada == TODO_OK)
+    while(tiempoActual < configuracion.duracionJornadaMinutos && !fatalError)
     {
         // Mostrar los codigos y sus sintaxis
         mostrarOperaciones();
@@ -153,26 +140,27 @@ int main()
         validez = validarOperacion(operacion);
 
         // Si no es valida, vuelve a pedir y vuelve a evaluar validez
-        while(validez != 's')
+        while(validez == 'n')
         {
             printf("\nOperacion invalida.");
             printf("\nOPERADOR> ");
             ingresarTexto(MAX_CODIGO, operacion);
             validez = validarOperacion(operacion);
         }
-
-        resultadoOperacion = ejecutarOperacion(operacion, &puerto, &tiempoActual, &configuracion, &varsResumen);
-        if(resultadoOperacion == ERR_MEMORIA)
-            fatalError = 1;
-        else
+        if(validez != 'e') // si no hay error (mas parametros de los pedidos)
         {
-            if(resultadoOperacion!= TODO_OK)
-                motivo(resultadoOperacion);
-            // Chequear que la jornada pueda arrancar/seguir
-            finJornada = jornadaTerminada(&puerto);
-            if(finJornada != TODO_OK)
-                printf("\nNo queda nada por hacer\n");
+            resultadoOperacion = ejecutarOperacion(operacion, &puerto, &tiempoActual, &configuracion, &varsResumen, &archJornadas);
+            if(resultadoOperacion == ERR_MEMORIA)
+                fatalError = 1;
+            else
+            {
+                if(resultadoOperacion!= TODO_OK)
+                    motivo(resultadoOperacion);
+            }
         }
+        else
+            fatalError = 1;
+
     }
 
     printf("\n*\n*\n*\n* Finalizando...\n*\n*\n*\n");
@@ -189,7 +177,9 @@ int main()
         varsResumen.puntuacionFinal -= 2*varsResumen.camionesPendientes;
         operador.puntajeTotal += varsResumen.puntuacionFinal;
     }
-    eventoOperadorFin(archOperadores, archJornadas, archIndice, &operador, &arbol, &nuevoOperador);
+    eventoOperadorFin(&archOperadores, &archJornadas, &archIndice, &operador, &arbol, &nuevoOperador, &varsResumen, &fatalError);
+
+
 
     eliminarArbol(&arbol);
     fclose(archJornadas);
