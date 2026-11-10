@@ -107,14 +107,14 @@ tZona* buscarZona(tPuerto *puerto, const char *idBuscado);
 tZona* buscarZonaTope(tLista zonas, const char *codContBuscado);
 tMuelle* buscarMuelle(tPuerto *puerto, const char *idBuscado) ;
 void liberarPuerto(tPuerto *puerto);
-int asignarEsperando(tPuerto *puerto);
+int asignarEsperando(tPuerto* puerto);
 
 int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int* tiempoAct, tConfig* config, tResumen *resumen, FILE **fp);
 int ejecutarDES( tMuelle *muelle, tZona *zonaDest, tContenedor *contenedor_descarga); // ejecuta descarga
 int ejecutarENT(tPuerto *puerto, tContenedor *contenedor_entregado);
 int ejecutarREU( tZona* zonaOrigen, tZona* zonaDest, tContenedor* contenedor_desc);
 void ejecutarVER( tPuerto* puerto, int tiempoActual, int puntuacionProv);
-void ejecutarESP();
+// void ejecutarESP(); ya no se usa
 
 int crearZonas(tLista *zonas, unsigned cantZonas, unsigned capacidad);
 int crearBuquesyCamiones(tPuerto* puerto, FILE *pfPuerto);
@@ -131,12 +131,13 @@ int realizarEventos(tPuerto *puerto, tOperacion *operacion, int *temporizador);
 int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDestino, tMuelle *muelleDestino,
                       tPuerto *puerto, int tiempoAct, tResumen *resumen);
 int duracionOperacion(int codOperacion, const tConfig *config);
-int hayOperacionValida(tPuerto *puerto, int tiempoAct, const tConfig *config);
+int hayOperacionValida(tPuerto* puerto, int tiempoAct, const tConfig* config);
+int haySkipAProximoEvento(tPuerto* puerto, int* tiempoAct, tConfig* config);
 
 int eventoOperadorIni(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador);
 int eventoOperadorFin(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador, tResumen *resumen, int *error);
 
-int jornadaTerminada(tPuerto *puerto);
+int jornadaTerminada(tPuerto* puerto);
 
 void printCamion(const void* a);
 void printZona(const void* a);
