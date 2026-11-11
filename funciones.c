@@ -1212,7 +1212,7 @@ int eventoOperadorIni(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOpe
 
     // se crea operador
     puts("Si su usuario no existe, al ingresar un nuevo nombre dispone de 100 caracteres.\n");
-    puts("Ingrese el nombre del operador para esta sesion:\n");
+    puts("Ingrese el nombre del operador para esta sesion:");
     ingresarTexto(TAM_NOMBRE + 1, operador->nombre);
 
     // cargamos el arbol con archivo operadores

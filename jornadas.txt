@@ -1,3 +1,7 @@
 [JORNADA]
 Jornada Nº1
 [HISTORIAL DE JORNADA]
+[JORNADA]
+Jornada Nº2
+[HISTORIAL DE JORNADA]
+Jornada sin eventos - Salida por Menu
