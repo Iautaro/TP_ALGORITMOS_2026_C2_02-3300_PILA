@@ -12,8 +12,6 @@
 #define HALLADO 1
 #define NO_HALLADO 207
 
-#define MINIMO(X,Y) ((X)<(Y)?(X):(Y))
-
 #define reservarMemoriaNodo( X , Y , Z , W ) ( \
  ( ( X ) = (typeof( X ))malloc( Y ) ) == NULL || \
  ( ( Z ) = malloc( W ) ) == NULL ? \

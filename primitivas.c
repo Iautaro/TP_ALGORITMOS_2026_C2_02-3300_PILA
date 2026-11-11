@@ -44,6 +44,22 @@ int pilaVacia(const tPila *p)
     return *p == NULL;
 }
 
+int pilaLlena( const tPila *p, unsigned tam)
+{
+    tNodo* aux = (tNodo*)malloc(sizeof(tNodo));
+    if(!aux)
+        return PILA_LLENA;
+    aux->info = malloc(tam);
+    if(!aux->info)
+    {
+        free(aux);
+        return PILA_LLENA;
+    }
+    free(aux->info);
+    free(aux);
+    return TODO_OK;
+}
+
 void vaciarPila(tPila* p)
 {
     while(*p)
@@ -112,6 +128,22 @@ int sacarDeCola(tCola *p, void *d, unsigned cantBytes)
 int colaVacia(const tCola *c)
 {
     return c->pri == NULL || c->ult == NULL;
+}
+
+int colaLlena( const tCola *p, unsigned tam)
+{
+    tNodo* aux = (tNodo*)malloc(sizeof(tNodo));
+    if(!aux)
+        return COLA_LLENA;
+    aux->info = malloc(tam);
+    if(!aux->info)
+    {
+        free(aux);
+        return COLA_LLENA;
+    }
+    free(aux->info);
+    free(aux);
+    return TODO_OK;
 }
 
 

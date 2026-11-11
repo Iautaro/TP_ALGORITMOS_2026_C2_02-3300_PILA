@@ -1,5 +1,16 @@
 #include "funciones.h"
 
+int cmpInt(const void* a, const void* b)
+{
+    return *(const int*)a - *(const int*)b;
+}
+int cmpTiempo(const void* a, const void* b)
+{
+    const tCamion* k1 = (const tCamion*)a;
+    const tCamion* k2 = (const tCamion*)b;
+    return k1->tiempoLlegada - k2->tiempoLlegada;
+}
+
 /* -------------------- hecho en la rama estructura_main previo a la fusion (empieza aca) -------------------- */
 /// Lectura del archivo config.txt
 int leerConfiguracion(FILE* arch, tConfig* configuracion)
@@ -11,12 +22,17 @@ int leerConfiguracion(FILE* arch, tConfig* configuracion)
     char* parametroLeido;
     // Valor de esa linea leida
     char* valorLeido;
+    char* fin;
+
+    int valor;
+    char resto; // si se pone algo como 10aaa, se lee el 10 a valor y los aaa a resto, haciendo que sscanf devuelva 2 y ahi ver si se puso un valor incorrecto
+                // aplica tambien cuando se pone algo como 1000000, donde lee los 4 primeros como 1000 y lo que queda va a resto y vuelve a rechazarse el valor
 
     // While hasta que se termine el archivo, lee linea por linea
     while(fgets(lineaParametro, MAX_LINEA_CONFIG, arch))
     {
         // Asegurarse de haber encontrado un \n y reemplazarlo por \0
-        char* fin = strchr(lineaParametro, '\n');
+        fin = strchr(lineaParametro, '\n');
         if(!fin)
         {
             printf("Error al obtener linea de parametro\n");
@@ -44,70 +60,56 @@ int leerConfiguracion(FILE* arch, tConfig* configuracion)
             return ERR_PARAM;
         }
 
-        // Verificar que no sea negativo
-        if(*valorLeido == '-')
+        // el if de abajo verifica que se lea un numero de maximo 4 caracteres,
+        // que sea un valor positivo,
+        // y que no supere 99 para las configuraciones distintas del tiempo (el tiempo puede superar 99)
+        if(sscanf(valorLeido, "%4d%c", &valor, &resto) != 1 || valor < 1 || (valor > 99 && strcmp(parametroLeido, "duracion_jornada_minutos") != 0)) // ver logica donde se declara resto
         {
-            printf("No se pueden ingresar numeros negativos en config.txt\n");
+            printf("Valor invalido (%s): %s (debe ser un numero entre 1 y 99, y la duracion maxima es 9999)\n", parametroLeido, valorLeido);
             return ERR_PARAM;
-        }
-        else //verificar que no sea > 99
-        {
-            if(strcmp(parametroLeido, "duracion_jornada_minutos") != 0 && atoi(valorLeido) > 99)
-            {
-                printf("El limite de los parametros es 99 (excepto duracion_jornada_minutos)\n");
-                return ERR_PARAM;
-            }
-            else
-            {
-                if(strcmp(parametroLeido, "duracion_jornada_minutos") == 0 && atoi(valorLeido) <= 0)
-                {
-                    printf("La duracion de la jornada debe ser mayor a 0\n");
-                    return ERR_PARAM;
-                }
-            }
         }
 
         // Las siguientes comprobaciones sirven para asegurarse que la configuracion se guarda donde se debe
         // (asumiendo que no siempre va a estar en el orden propuesto)
         if(strcmp(parametroLeido, "duracion_jornada_minutos") == 0)
         {
-            configuracion->duracionJornadaMinutos = atoi(valorLeido);
+            configuracion->duracionJornadaMinutos = valor;
         }
         else if(strcmp(parametroLeido, "cantidad_muelles") == 0)
         {
-            configuracion->cantidadMuelles = atoi(valorLeido);
+            configuracion->cantidadMuelles = valor;
         }
         else if(strcmp(parametroLeido, "cantidad_zonas_almacenamiento") == 0)
         {
-            configuracion->cantidadZonasAlmacenamiento = atoi(valorLeido);
+            configuracion->cantidadZonasAlmacenamiento = valor;
         }
         else if(strcmp(parametroLeido, "capacidad_pila") == 0)
         {
-            configuracion->capacidadPila = atoi(valorLeido);
+            configuracion->capacidadPila = valor;
         }
         else if(strcmp(parametroLeido, "maximo_buques") == 0)
         {
-            configuracion->maximoBuques = atoi(valorLeido);
+            configuracion->maximoBuques = valor;
         }
         else if(strcmp(parametroLeido, "maximo_contenedores_por_buque") == 0)
         {
-            configuracion->maximoContenedoresPorBuque = atoi(valorLeido);
+            configuracion->maximoContenedoresPorBuque = valor;
         }
         else if(strcmp(parametroLeido, "maximo_camiones") == 0)
         {
-            configuracion->maximoCamiones = atoi(valorLeido);
+            configuracion->maximoCamiones = valor;
         }
         else if(strcmp(parametroLeido, "tiempo_descarga_contenedor") == 0)
         {
-            configuracion->tiempoDescargaContenedor = atoi(valorLeido);
+            configuracion->tiempoDescargaContenedor = valor;
         }
         else if(strcmp(parametroLeido, "tiempo_reubicacion_contenedor") == 0)
         {
-            configuracion->tiempoReubicacionContenedor = atoi(valorLeido);
+            configuracion->tiempoReubicacionContenedor = valor;
         }
         else if(strcmp(parametroLeido, "tiempo_carga_camion") == 0)
         {
-            configuracion->tiempoCargaCamion = atoi(valorLeido);
+            configuracion->tiempoCargaCamion = valor;
         }
         else
         {
@@ -151,8 +153,27 @@ int abrirOCrearArchivo(const char* nomArch, FILE **arch, char modo)
 }
 
 /// Crear el archivo puerto.txt y llenarlo de forma aleatoria cada pasada
-int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuracion, tCola* contenedores, Cmp cmpInt, Cmp cmpTiempo)
+int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuracion, Cmp cmpInt, Cmp cmpTiempo)
 {
+    // var para errores
+    int res;
+    int* tiemposBuques = NULL;
+    // Variables para loops
+    int i;
+    int b;
+    int c;
+    int k;
+    int contenedoresTotales = 0; // Contador de contenedores
+    tCamion* camiones = NULL;
+    char nroCont[TAM_NOM_CONTENEDOR]; // Numero de contenedor incluyendo la C
+    int cantContenedores;
+    int cantCamiones;
+    int restantes;
+    tCola contenedores;
+
+    crearCola(&contenedores);
+
+
     puerto->muelles = NULL;
     puerto->cantMuelles = 0;
     crearLista(&puerto->zonas);
@@ -168,36 +189,31 @@ int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuraci
     fprintf(archPuerto, "\n");
     fprintf(archPuerto, "[BUQUES]\n");
 
-    // var para errores
-    int resultado;
+
+
 
     // Vector de enteros que guarda los tiempos de llegada de cada buque
-    int* tiemposBuques = malloc(configuracion->maximoBuques * sizeof(int));
+    tiemposBuques = malloc(configuracion->maximoBuques * sizeof(int));
     if(!tiemposBuques)
     {
         printf("Error al asignar memoria para guardar tiempos de llegada de buques\n");
+        vaciarCola(&contenedores);
         return ERR_MEMORIA;
     }
-    // Variables para loops
-    int i;
-    int b;
-    int c;
-    int k;
-    // Contador de contenedores
-    int contenedoresTotales = 0;
+
 
     // Vector de camiones que guarda los datos de cada camion
     // (menos el numero del camion, que no esta actualmente en la estructura)
-    tCamion* camiones = malloc(configuracion->maximoCamiones * sizeof(tCamion));
+    camiones = malloc(configuracion->maximoCamiones * sizeof(tCamion));
     if(!camiones)
     {
         printf("Error al asignar memoria para guardar camiones\n");
         free(tiemposBuques);
+        vaciarCola(&contenedores);
         return ERR_MEMORIA;
     }
 
-    // Numero de contenedor incluyendo la C
-    char nroCont[TAM_NOM_CONTENEDOR];
+
 
     // Genera la semilla para el uso de rand() (averiguar para que siempre sea la misma secuencia, para hacer testing)
     srand(time(NULL));
@@ -211,7 +227,7 @@ int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuraci
     for(i = 0; i < configuracion->maximoCamiones; i++)
     {
         // aca lo mismo pero es el 100% de la duracion el maximo. Aplica a los tiempos de llegada de los camiones
-        (camiones + i)->tiempoLlegada = rand() % (int)(configuracion->duracionJornadaMinutos + 1);
+        (camiones + i)->tiempoLlegada = rand() % (int)(configuracion->duracionJornadaMinutos);
     }
     // Ordenamiento de los tiempos de llegada de los buques
     qsort(tiemposBuques, configuracion->maximoBuques, sizeof(int), cmpInt);
@@ -230,25 +246,25 @@ int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuraci
     // b1 c1 c2; b2?
     // la cantidad de contenedores no puede ser 6 (2*3), debe ser 2 (la cantidad maxima de camiones, y un solo buque ya que son menos contenedores que los maximos por buque)
 
-    // Entonces esta variable guarda el min(maximo de camiones, buques * max por buque)
+    // Entonces esta variable guarda el max de contenedores
     // Establece la cantidad maxima de contenedores que va a haber, respetando los casos planteados
-    int cantContenedores = configuracion->maximoBuques * configuracion->maximoContenedoresPorBuque;
+    cantContenedores = configuracion->maximoBuques * configuracion->maximoContenedoresPorBuque;
 
     // Loop for para registrar los buques con sus contenedores en el archivo
     // Las condiciones revisan que no haya mas buques que los aclarados en config.txt y que no haya mas contenedores que los establecidos en la variable de antes
     // No se suma la variable de los contenedores en cada pasada, solamente se suma al registrar los contenedores (el loop de adentro)
-
     for(b = 1; b <= configuracion->maximoBuques && contenedoresTotales < cantContenedores; b++)
     {
         snprintf(nroCont, TAM_NOM_CONTENEDOR, "C%d01", b);
         fprintf(archPuerto, "B%03d;T=%d;C=%s", b, *(tiemposBuques + b - 1), nroCont);
         contenedoresTotales++;
 
-        if(ponerEnCola(contenedores, nroCont, TAM_NOM_CONTENEDOR) != TODO_OK)
+        if(ponerEnCola(&contenedores, nroCont, TAM_NOM_CONTENEDOR) != TODO_OK)
         {
             printf("Error al asignar memoria para cola de contenedores para puerto.txt\n");
             free(tiemposBuques);
             free(camiones);
+            vaciarCola(&contenedores);
             return ERR_MEMORIA;
         }
 
@@ -261,11 +277,12 @@ int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuraci
             snprintf(nroCont, TAM_NOM_CONTENEDOR, "C%d%02d", b, c);
             fprintf(archPuerto, ",C%d%02d", b, c);
             // Agrego los nombres de los contenedores a una cola para luego desacolar con los camiones
-            if(ponerEnCola(contenedores, nroCont, TAM_NOM_CONTENEDOR) != TODO_OK)
+            if(ponerEnCola(&contenedores, nroCont, TAM_NOM_CONTENEDOR) != TODO_OK)
             {
                 printf("Error al asignar memoria para cola de contenedores para puerto.txt\n");
                 free(tiemposBuques);
                 free(camiones);
+                vaciarCola(&contenedores);
                 return ERR_MEMORIA;
             }
         }
@@ -275,17 +292,18 @@ int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuraci
     // Saco los contenedores de la cola y los guardo en el campo de contenedor de cada camion del vector de camiones
     // (cuando este andando, fijarse si se puede saltear este paso y ponerlo directo donde se agrega a la cola, ahorrando toda la cola en si)
 
-    int cantCamiones = configuracion->maximoCamiones < contenedoresTotales ? configuracion->maximoCamiones : contenedoresTotales;
-    int restantes = contenedoresTotales;
+    cantCamiones = configuracion->maximoCamiones < contenedoresTotales ? configuracion->maximoCamiones : contenedoresTotales;
+    restantes = contenedoresTotales;
 
     i = 0;
-    while(!colaVacia(contenedores))
+    while(!colaVacia(&contenedores))
     {
-        if(sacarDeCola(contenedores, nroCont, TAM_NOM_CONTENEDOR) != TODO_OK)
+        if(sacarDeCola(&contenedores, nroCont, TAM_NOM_CONTENEDOR) != TODO_OK)
         {
             printf("Error al asignar memoria para sacar de cola\n");
             free(tiemposBuques);
             free(camiones);
+            vaciarCola(&contenedores);
             return ERR_MEMORIA;
         }
         if(rand() % restantes < cantCamiones - i)
@@ -313,6 +331,7 @@ int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuraci
     {
         free(tiemposBuques);
         free(camiones);
+        vaciarCola(&contenedores);
         return ERR_MEMORIA;
     }
     puerto->cantMuelles = configuracion->cantidadMuelles;
@@ -322,20 +341,24 @@ int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuraci
     {
         free(tiemposBuques);
         free(camiones);
+        vaciarCola(&contenedores);
         return ERR_MEMORIA;
     }
     fflush(archPuerto);
     rewind(archPuerto);
-    resultado = crearBuquesyCamiones(puerto, archPuerto);
+    res = crearBuquesyCamiones(puerto, archPuerto);
     free(tiemposBuques);
     free(camiones);
+    vaciarCola(&contenedores);
 
-    return resultado;
+    return res;
 }
 
 /// Ingresar texto
 void ingresarTexto(int max, char* texto)
 {
+    char* fin;
+
     // Uso fgets en vez de scanf ya que (en teoria) evita que se ingrese un texto mayor al max
     // lo corta con un \0 (entonces si no hay \n significa que lo que ingreso fue muy largo), evitando desborde de memoria
     fgets(texto, max, stdin);
@@ -343,14 +366,14 @@ void ingresarTexto(int max, char* texto)
     fflush(stdin);
 
     // Si existe, reemplaza el \n (del enter) en \0, sino debe ingresar nuevamente y vuelve a comprobar
-    char* fin = strchr(texto, '\n');
+    fin = strchr(texto, '\n');
     if(fin && fin != texto)
         *fin = '\0';
     else
     {
         while(fin == texto || fin == NULL)
         {
-            puts("Debe ingresar nuevamente\n");
+            puts("Debe ingresar nuevamente");
             fgets(texto, max, stdin);
             fflush(stdin);
 
@@ -369,6 +392,7 @@ void mostrarOperaciones()
     printf("\nENT - Entregar: ENT");
     printf("\nVER - Ver estado: VER");
     printf("\nESP - Esperar: ESP");
+    printf("\nSAL - Salir: SAL");
 }
 
 /// Funcion complementaria para validar los parametros dentro de una operacion (se llama desde validarOperacion())
@@ -407,26 +431,27 @@ char verificarParametrosOperacion(char* param1, char* param2, char tipoParam1)
 char validarOperacion(char* operacion)
 {
     const char* comandosValidos[CANT_COMANDOS] = {"DES", "REU", "ENT", "VER", "ESP", "SAL"};
+    int i;
+    char aux[MAX_CODIGO];
+    char* comando;
+    char* parametro1;
+    char* parametro2;
+    char* parametro3;
+    int c;
+    char encontrado = 'n';
 
     // Conversion a mayuscula
-    int i;
     for(i = 0; *(operacion + i) != '\0'; i++)
         *(operacion + i) = toupper(*(operacion + i));
 
     // Uso aux para no perder la operacion original (que se cortaria antes por el \0 que agrega strtok)
-    char aux[MAX_CODIGO];
     strcpy(aux, operacion);
     // Primero obtengo el comando, ya que no se si va a tener parametros o no, depende el comando
-    char* comando = strtok(aux, " \n\0");
+    comando = strtok(aux, " \n\0");
     if(comando == NULL)
         return 'n';
-    char* parametro1;
-    char* parametro2;
-    char* parametro3;
 
     // Reviso que sea una operacion posible
-    int c;
-    char encontrado = 'n';
     for(c = 0; c < CANT_COMANDOS; c++)
     {
         // cambiar indice por aritmetica de punteros?
@@ -479,7 +504,7 @@ void printCamion(const void* a)
 void printZona(const void* a)
 {
     const tZona* zona = (const tZona*)a;
-    printf("%s: [", zona->codZona);
+    printf("%s: [ ", zona->codZona);
     recorrerPila(&zona->contenedores, printCont);
     printf("]\n");
 }
@@ -562,33 +587,6 @@ int ejecutarDES( tMuelle *muelle, tZona *zonaDest, tContenedor *contenedor_desca
     if(pilaVacia(&muelle->buqueAct->cont_pend))
         return BUQUE_COMPLETO;
 
-    return TODO_OK;
-}
-
-void mostrar_operaciones()
-{
-    printf("\nOperaciones y comandos disponibles:\n");
-    printf("\nDES - Descargar y almacenar.");
-    printf("\nREU - Reubicar.");
-    printf("\nENT - Entregar.");
-    printf("\nVER - Ver estado.");
-    printf("\nESP - Esperar.");
-    printf("\nPor favor ingrese comando a ejecutar:");
-
-}
-
-int validarCantidad( int leidos, int cant_esperada)
-{
-    if(leidos < cant_esperada)
-    {
-        printf("\nFaltan parametros %d.", leidos);
-        return FALTAN_PARAMETROS;
-    }
-    if( leidos > cant_esperada)
-    {
-        printf("\nCantidad de parametros mayor a la esperada(%d).", cant_esperada);
-        return EXCESO_PARAMETROS;
-    }
     return TODO_OK;
 }
 
@@ -685,8 +683,9 @@ int ejecutarREU( tZona* zonaOrigen, tZona* zonaDest, tContenedor* contenedor_des
 
 void ejecutarVER( tPuerto* puerto, int tiempoActual, int puntuacionProv)
 {
-    //tContenedor *prox;
     tContenedor prox;
+    int i;
+    int contador = 0; // Cant buques esperando
 
     printf("\n\t\tESTADO DEL PUERTO\n");
     printf("Tiempo: %d\n", tiempoActual);
@@ -694,7 +693,6 @@ void ejecutarVER( tPuerto* puerto, int tiempoActual, int puntuacionProv)
 
 
     printf("\nMUELLES\n"); // buques atracados en muelle
-    int i;
     for(i = 0; i < puerto->cantMuelles; i++)
     {
         // Recorro segun cant muelles
@@ -720,8 +718,6 @@ void ejecutarVER( tPuerto* puerto, int tiempoActual, int puntuacionProv)
             }
         }
     }
-
-    int contador = 0; // Cant buques esperando
     contador = contarCola(&puerto->buquesEsperando);
     printf("Cantidad de buques esperando muelles disponibles: %d\n", contador);
 
@@ -1133,9 +1129,7 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
         strcpy(operacion->codigoContenedor,camionAtendido.codigoContenedor);
         strcpy(operacion->origen, zonaContenedor->codZona);
         strcpy(operacion->destino, camionAtendido.codigoCamion);
-        break;
     }
-
 
     break;
 
@@ -1217,8 +1211,8 @@ int eventoOperadorIni(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOpe
     }
 
     // se crea operador
-    puts("Ingrese el nombre del operador para esta sesion:\n");
-    puts("Si su usuario no existe al ingresar un nuevo nombre dispone de 100 caracteres.\n");
+    puts("Si su usuario no existe, al ingresar un nuevo nombre dispone de 100 caracteres.\n");
+    puts("Ingrese el nombre del operador para esta sesion:");
     ingresarTexto(TAM_NOMBRE + 1, operador->nombre);
 
     // cargamos el arbol con archivo operadores
@@ -1239,7 +1233,12 @@ int eventoOperadorIni(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOpe
     }
 
     if((res = escribirJornadaIni(fpJornada, &modoAperturaJornada, nroJornada))!= TODO_OK)
-       return res;
+    {
+        fclose(*fpOperador);
+        fclose(*fpJornada);
+        fclose(*fpIndice);
+        return res;
+    }
 
     return TODO_OK;
 }
@@ -1319,7 +1318,7 @@ void escribirJornadaMed(FILE **fp, const tOperacion *operacion, const char *coma
     fprintf(*fp,"Tiempo de inicio:%u|Tiempo de finalizacion:%u|Cod operacion:%s|Contenedor:%s|Recurso origen:%s|Recurso destino:%s\n",
             operacion->tiempoDeCreacion, operacion->tiempoDeFinalizacion,
             comando,
-            (operacion->codigoContenedor ? operacion->codigoContenedor : "No Aplica"), // memset lo pone en 0 preguntamos si cambio
+            (*(operacion->codigoContenedor) != '\0' ? operacion->codigoContenedor : "No Aplica"), // memset lo pone en 0 preguntamos si cambio
             (origen ? origen : "No Aplica"),
             (destino ? destino : "No Aplica"));
 }
@@ -1329,12 +1328,12 @@ void escribirJornadaFin(FILE **fp, tResumen *res, int *error, tOperador *o)     
     if(!*error)
     {
         fprintf(*fp,"[ESTADISTICA DE JORNADA]\n");
-        fprintf(*fp, "Operador:%s|Puntuacion final:%d|Contenedores entregados:%u|Buques descargados:%u|Camiones pendientes:%u|Movimientos de reorganización realizados:%u|Tiempo utilizado:%u\n",
+        fprintf(*fp, "Operador:%s|Puntuacion final:%d|Contenedores entregados:%u|Buques descargados:%u|Camiones pendientes:%u|Movimientos de reorganizacion realizados:%u|Tiempo utilizado:%u\n",
                 o->nombre,res->puntuacionFinal,res->contenedoresEntregados,res->buquesDescargados,
                 res->camionesPendientes, res->reorganizaciones,
                 res->tiempoUtilizado);
         printf("\n----------- ESTADISTICA DE JORNADA -----------\n");
-        printf("Operador: %s\nPuntuacion final: %d\nContenedores entregados: %u\nBuques descargados: %u\nCamiones pendientes: %u\nMovimientos de reorganización realizados: %u\nTiempo utilizado:%u\n",
+        printf("Operador: %s\nPuntuacion final: %d\nContenedores entregados: %u\nBuques descargados: %u\nCamiones pendientes: %u\nMovimientos de reorganizacion realizados: %u\nTiempo utilizado:%u\n",
                 o->nombre,res->puntuacionFinal,res->contenedoresEntregados,res->buquesDescargados,
                 res->camionesPendientes, res->reorganizaciones,
                 res->tiempoUtilizado);
@@ -1575,8 +1574,7 @@ int haySkipAProximoEvento(tPuerto* puerto, int* tiempoAct, tConfig* config)
     if(!hay)
         return NO_HAY_EVENTOS;
 
-    // :p
-    printf("\nTomando un cafe. Avanzando tiempo de %d a %d...\n", *tiempoAct, proximoEvento);
+
 
     memset(&skip, 0, sizeof(skip));
     skip.tiempoPorDefault = proximoEvento - *tiempoAct;
@@ -1587,35 +1585,37 @@ int haySkipAProximoEvento(tPuerto* puerto, int* tiempoAct, tConfig* config)
 
 void mostrarMenu()
 {
-    printf("\nOperación Contrarreloj");
-    printf("\n       Menu");
-    printf("\n     INI - Iniciar Jornada");
-    printf("\n     RAN - Ranking");
-    printf("\n     SAL - Salir");
+    printf("\n~~~~~~~~~~~~~~~~ Operacion Contrarreloj ~~~~~~~~~~~~~~~~\n");
+    printf("\n                        Menu");
+    printf("\n                  INI - Iniciar Jornada");
+    printf("\n                  RAN - Ranking");
+    printf("\n                  SAL - Salir");
 }
 
 /// Validar el comando de operacion ingresado y su sintaxis / 'e' = error
 char validarEleccion(char* operacion)
 {
     const char* comandosValidos[CANT_COMANDOS] = {"INI", "RAN", "SAL"};
-
+    char aux[MAX_CODIGO];
+    char* comando;
+    char* parametro1;
     // Conversion a mayuscula
     int i;
+    int c;
+    char encontrado = 'n';
+
     for(i = 0; *(operacion + i) != '\0'; i++)
         *(operacion + i) = toupper(*(operacion + i));
 
     // Uso aux para no perder la operacion original (que se cortaria antes por el \0 que agrega strtok)
-    char aux[MAX_CODIGO];
     strcpy(aux, operacion);
     // Primero obtengo el comando, ya que no se si va a tener parametros o no, depende el comando
-    char* comando = strtok(aux, " \n\0");
+    comando = strtok(aux, " \n\0");
     if(comando == NULL)
         return 'n';
-    char* parametro1;
+
 
     // Reviso que sea una operacion posible
-    int c;
-    char encontrado = 'n';
     for(c = 0; c < CANT_COMANDOS_MENU; c++)
     {
         if(strcmp(comando, *(comandosValidos+c) ) == 0)
@@ -1710,7 +1710,7 @@ int realizarRanking(FILE **fp)
     if(cantidad == 0)
     {
         printf("\nRanking sin entradas\n");
-        printf("\nOPERADOR> ");
+        printf("\n\nOPERADOR> ");
         return TODO_OK;
     }
 
@@ -1719,7 +1719,7 @@ int realizarRanking(FILE **fp)
     printf("===========================================\n");
 
     eliminarArbol(&arbolRanking);
-    printf("\nOPERADOR> ");
+    printf("\n\nOPERADOR> ");
 
     return TODO_OK;
 }
@@ -1727,21 +1727,28 @@ int realizarRanking(FILE **fp)
 void leerJornada(FILE* fp, int nroJornada)
 {
     char buffer[TAM_LINEA_BUFF_LECTURA];
+    char jornada[TAM_LINEA_BUFF_LECTURA];
     int encontrado = 0;
+
+    snprintf(jornada, TAM_LINEA_BUFF_LECTURA, "Jornada Nº%d\n", nroJornada); // haciendo esto podemos buscar el numero especifico de jornada, que se pasa por param
     while(!encontrado && fgets(buffer, TAM_LINEA_BUFF_LECTURA, fp))               // busco numero de jornada y avanzo hasta el final
     {
-        if(strcmp(buffer, "[HISTORIAL DE JORNADA]")==0)
+        if(strcmp(buffer, jornada)==0)
             encontrado = 1;
     }
     if(!encontrado)
         return;
-    printf("\nHistorial de movimientos\n");
+    printf("\n---------- Historial de movimientos ----------\n");
     encontrado = 0;
     while(!encontrado && fgets(buffer, TAM_LINEA_BUFF_LECTURA, fp))
     {
-        if(strcmp(buffer, "[ESTADISTICA DE JORNADA]")==0)
+        if(strcmp(buffer, "[ESTADISTICA DE JORNADA]\n")==0)
             encontrado = 1;
         else
-            printf("%s\n", buffer);
+        {
+            if(strcmp(buffer, "[HISTORIAL DE JORNADA]\n") != 0) //puede pasar que haya dos [HISTORIAL DE JORNADA] juntos si se sale antes de iniciar
+                printf("%s", buffer);
+        }
+
     }
 }

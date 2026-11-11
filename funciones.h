@@ -4,7 +4,6 @@
 #include "primitivas.h"
 #include "arbol.h"
 #include "indice_operador.h"
-#include "operador.h"
 
 typedef struct{
     char codigoBuque[TAM_NOMBRE];
@@ -90,7 +89,7 @@ typedef struct
 // funciones usadas en main.c
 int leerConfiguracion(FILE* arch, tConfig* configuracion);
 int abrirOCrearArchivo(const char* nomArch, FILE **arch, char modo);
-int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuracion, tCola* contenedores, Cmp cmpInt, Cmp cmpTiempo);
+int prepararPuerto(tPuerto* puerto, FILE* archPuerto, const tConfig* configuracion, Cmp cmpInt, Cmp cmpTiempo);
 void ingresarTexto(int max, char* texto);
 void mostrarOperaciones();
 char verificarParametrosOperacion(char* param1, char* param2, char tipoParam1);
@@ -100,10 +99,9 @@ char validarOperacion(char* operacion);
 
 int inicializarResumen(tResumen* res);
 
-void mostrar_operaciones();
+
 void motivo(int codigo);
 
-int validarCantidad( int leidos, int cant_esperada);
 tZona* buscarZona(tPuerto *puerto, const char *idBuscado);
 tZona* buscarZonaTope(tLista zonas, const char *codContBuscado);
 tMuelle* buscarMuelle(tPuerto *puerto, const char *idBuscado) ;
@@ -147,6 +145,8 @@ void printCont(const void* a);
 int cmpZona(const void* a, const void* b);
 int cmpContEnZona(const void* a, const void* b);
 int cmpRanking(const void *a, const void *b);
+int cmpInt(const void* a, const void* b);
+int cmpTiempo(const void* a, const void* b);
 
 int escribirJornadaIni(FILE **fp, int *modo, int* numeroJornada);
 void escribirJornadaMed(FILE **fp, const tOperacion *operacion, const char *comando, const char* origen, const char* destino);
