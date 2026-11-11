@@ -15,7 +15,7 @@
 #define CANT_MUELLES
 #define MAX_LINEA_CONFIG 35
 #define MAX_CODIGO 12
-#define CANT_COMANDOS 5
+#define CANT_COMANDOS 6
 #define CANT_COMANDOS_MENU 3
 
 #define TODO_OK 0
@@ -76,9 +76,10 @@
 #define OPERACION_ENT 252
 #define OPERACION_REU 253
 #define OPERACION_ESP 254
-#define INICIAR 255
-#define SALIR 256
-#define RANKING 257
+#define OPERACION_SAL 255
+#define INICIAR 256
+#define SALIR 257
+#define RANKING 258
 
 #define PILA_VACIA 1
 #define COLA_VACIA 1

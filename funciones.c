@@ -397,7 +397,7 @@ char verificarParametrosOperacion(char* param1, char* param2, char tipoParam1)
 /// Validar el comando de operacion ingresado y su sintaxis / 'e' = error
 char validarOperacion(char* operacion)
 {
-    const char* comandosValidos[CANT_COMANDOS] = {"DES", "REU", "ENT", "VER", "ESP"};
+    const char* comandosValidos[CANT_COMANDOS] = {"DES", "REU", "ENT", "VER", "ESP", "FIN"};
 
     // Conversion a mayuscula
     int i;
@@ -600,6 +600,11 @@ int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int* tiempoAct, tCo
     if(resultado != TODO_OK)
         return resultado;
 
+    if(operacion.codOperacion == OPERACION_SAL)
+    {
+        return operacion.codOperacion;
+    }
+
     operacion.tiempoPorDefault = duracionOperacion(operacion.codOperacion, config);
     operacion.tiempoDeCreacion = *tiempoAct;
 
@@ -618,7 +623,7 @@ int ejecutarOperacion(char *entradaUsuario, tPuerto *puerto, int* tiempoAct, tCo
     resumen->puntuacionFinal += operacion.puntuacion;     // realiza suma de puntuación por cada operación finalizada
     operacion.tiempoDeFinalizacion = *tiempoAct;         // registro tiempo de finalizacion de operacion
 
-    escribirJornadaMed(fp, &operacion, comando, zonaOrigen->codZona, zonaDestino->codZona);
+    escribirJornadaMed(fp, &operacion, comando, zonaOrigen ? (zonaOrigen->codZona) : NULL, zonaDestino ? (zonaDestino->codZona) : NULL);
 
     return OP_EXITO;
 }
@@ -1031,6 +1036,13 @@ int detectarOperacion(const char* comando, tZona **zonaOrigen, tZona** zonaDesti
         operacion->codOperacion = OPERACION_ENT;
         return TODO_OK;
     }
+
+    else if(strcmp(comando, "SAL") == 0)
+    {
+        operacion->codOperacion = OPERACION_SAL;
+        return TODO_OK;
+    }
+
     else
     {
         // El comando ingresado no existe
@@ -1169,6 +1181,7 @@ int eventoOperadorIni(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOpe
     int modoAperturaOperador = 0;
     int modoAperturaIndice = 0;
     int modoAperturaJornada = 0;
+    int res = 0;
 
     modoAperturaOperador = abrirOCrearArchivo("operadores.dat", fpOperador, 'b');
     if(modoAperturaOperador == ERR_ARCHIVO || modoAperturaOperador == MODO_INVALIDO)
@@ -1215,7 +1228,8 @@ int eventoOperadorIni(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOpe
         operador->puntajeTotal = 0;                                                     // inicializamos su puntaje
     }
 
-    escribirJornadaIni(fpJornada, &modoAperturaJornada);
+    if((res = escribirJornadaIni(fpJornada, &modoAperturaJornada))!= TODO_OK)
+       return res;
 
     return TODO_OK;
 }
@@ -1256,7 +1270,7 @@ int eventoOperadorFin(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOpe
     "Operador:(cadena char)|Puntuacion final:(numero)|Contenedores entregados:(numero)|Buques descargados:(numero)|Camiones pendientes:(numero)|Movimientos de reorganización realizados:(numero)|Tiempo utilizado:(numero) (esto es resumen jornada)
 
 */
-void escribirJornadaIni(FILE **fp, int *modo)                      // inicia la jornada y iniciamos escritura con num de jornada
+int escribirJornadaIni(FILE **fp, int *modo)                            // inicia la jornada y iniciamos escritura con num de jornada
 {
     unsigned numeroJornada = 0;
     char buffer[TAM_LINEA_BUFF_LECTURA];
@@ -1274,12 +1288,18 @@ void escribirJornadaIni(FILE **fp, int *modo)                      // inicia la 
         while(fgets(buffer, TAM_LINEA_BUFF_LECTURA, *fp))               // busco numero de jornada y avanzo hasta el final
         {
             if(strncmp(buffer, "Jornada Nº", 10)==0)
-                numeroJornada = (unsigned)*((ptrBuffer+10)- '0');
+            {
+                ptrBuffer = strchr(buffer,'º');
+                if(!ptrBuffer)
+                    return ERR_LINEA_LARGA;
+                numeroJornada = atoi(ptrBuffer+1);
+            }
         }
         fprintf(*fp,"[JORNADA]\n");
         fprintf(*fp,"Jornada Nº%u\n", numeroJornada);
         fprintf(*fp,"[HISTORIAL DE JORNADA]\n");
     }
+    return TODO_OK;
 }
 
 ///   escribirJornadaMed(fp, operacion, comando, zonaOrigen.codZona, zonaDestino.codZona);
