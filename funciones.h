@@ -68,7 +68,6 @@ typedef struct
     int puntuacionFinal;
 } tResumen;
 
-/* --------------- hecho en la rama estructura_main previo a la fusion (empieza aca) --------------- */
 // Variables de configuracion
 typedef struct
 {
@@ -95,7 +94,6 @@ void mostrarOperaciones();
 char verificarParametrosOperacion(char* param1, char* param2, char tipoParam1);
 char validarOperacion(char* operacion);
 
-/* --------------- hecho en la rama estructura_main previo a la fusion (termina aca) --------------- */
 
 int inicializarResumen(tResumen* res);
 

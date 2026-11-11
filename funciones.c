@@ -11,7 +11,6 @@ int cmpTiempo(const void* a, const void* b)
     return k1->tiempoLlegada - k2->tiempoLlegada;
 }
 
-/* -------------------- hecho en la rama estructura_main previo a la fusion (empieza aca) -------------------- */
 /// Lectura del archivo config.txt
 int leerConfiguracion(FILE* arch, tConfig* configuracion)
 {
@@ -120,7 +119,7 @@ int leerConfiguracion(FILE* arch, tConfig* configuracion)
 }
 
 /// Apertura del archivo o creacion del archivo si no existe
-// modifico esta funcion para poder observar si creo o abrio
+// tambien manejamos parametro de retorno para poder observar si creo o abrio archivo
 int abrirOCrearArchivo(const char* nomArch, FILE **arch, char modo)
 {
     if(modo == 't')
@@ -430,7 +429,7 @@ char verificarParametrosOperacion(char* param1, char* param2, char tipoParam1)
 /// Validar el comando de operacion ingresado y su sintaxis / 'e' = error
 char validarOperacion(char* operacion)
 {
-    const char* comandosValidos[CANT_COMANDOS] = {"DES", "REU", "ENT", "VER", "ESP", "SAL"};
+    const char* comandosValidos[CANT_COMANDOS] = {"DES", "REU", "ENT", "VER", "ESP", "SAL"}; // se suma una opcion más "SAL" para salir de la jornada
     int i;
     char aux[MAX_CODIGO];
     char* comando;
@@ -493,7 +492,6 @@ char validarOperacion(char* operacion)
 
     return encontrado;
 }
-/* -------------------- hecho en la rama estructura_main previo a la fusion (termina aca) -------------------- */
 
 void printCamion(const void* a)
 {
@@ -568,7 +566,6 @@ int ejecutarDES( tMuelle *muelle, tZona *zonaDest, tContenedor *contenedor_desca
         return MUELLE_VACIO;
     }
 
-    // if(colaVacia(&((*muelle).buqueAct->cont_pend) ))
     if(pilaVacia(&muelle->buqueAct->cont_pend))           // verifica si hay contenedores pendientes en el buque de ese muelle
         return BUQUE_VACIO;                             // implementado con pila
 
@@ -648,7 +645,7 @@ tMuelle* buscarMuelle(tPuerto *puerto, const char *idBuscado)
             return (puerto->muelles + i);              // Retorna dirección de memoria del muelle
         }
     }
-    return NULL;                                       // no encuentra, no esya
+    return NULL;                                       // no encuentra, no esta
 }
 
 tZona* buscarZona(tPuerto *puerto, const char *idBuscado)
@@ -757,27 +754,22 @@ int parsearBuques(tBuque *buque, char *buffer, char* bufferCodigo)
     while((ptrBuffer = strrchr(buffer, ','))!=NULL) // leo tantos C= como halla en archivo excepto el primero (usa ";")
     {
         strncpy(bufferCodigo, ptrBuffer + 1, TAM_LINEA_CODIGO_CONT);
-        *(bufferCodigo+TAM_LINEA_CODIGO_CONT-1) = '\0';
-        //bufferCodigo[TAM_LINEA_CODIGO_CONT - 1] = '\0'; // buffer tendra vector de char que ira a pila de codigos de buque actual
-        ponerEnPila(&buque->cont_pend, bufferCodigo, strlen(bufferCodigo) + 1); /// PENDIENTE PARA CUANDO PASE TODO A PILA
+        *(bufferCodigo+TAM_LINEA_CODIGO_CONT-1) = '\0'; // buffer tendra vector de char que ira a pila de codigos de buque actual
+        ponerEnPila(&buque->cont_pend, bufferCodigo, strlen(bufferCodigo) + 1);
         *ptrBuffer = '\0';
     }
 
     ptrBuffer = strrchr(buffer, ';');   // busco el ultimo C= con ";"
     strncpy(bufferCodigo, ptrBuffer + 3, TAM_LINEA_CODIGO_CONT); // ptrBuffer+3 salto ;C= y queda en C de C001
-    //bufferCodigo[TAM_LINEA_CODIGO_CONT - 1] = '\0';
     *(bufferCodigo+TAM_LINEA_CODIGO_CONT-1) = '\0';
     ponerEnPila(&buque->cont_pend, bufferCodigo, strlen(bufferCodigo) + 1); // ultima carga al fondo de pila y primera queda en tope
-    /// PENDIENTE PARA CUANDO PASE TODO A PILA
     *ptrBuffer = '\0';
 
     ptrBuffer = strrchr(buffer, ';');
     sscanf(ptrBuffer+3,"%u", &buque->horaLlegada);
-    //buque->tiempoLlegada = atoi(ptrBuffer+3);
     *ptrBuffer = '\0';
 
     strncpy(buque->codigoBuque,buffer,TAM_NOMBRE);
-    //buque->codigoBuque[TAM_NOMBRE - 1]='\0';
     *(buque->codigoBuque+TAM_NOMBRE - 1) = '\0';
     // fin desarmar buffer
 
@@ -807,7 +799,6 @@ int parsearCamiones(tCamion *camion, char *buffer)
     ptrBuffer = strrchr(buffer, ';');
     strncpy(camion->codigoContenedor, ptrBuffer+3, TAM_NOM_CONTENEDOR - 1);
     *(camion->codigoContenedor+TAM_NOM_CONTENEDOR-1) = '\0';
-    //camion->codigoContenedor[TAM_NOM_CONTENEDOR - 1] = '\0';
     *ptrBuffer = '\0';
 
     ptrBuffer = strrchr(buffer, ';');
@@ -815,7 +806,6 @@ int parsearCamiones(tCamion *camion, char *buffer)
     *ptrBuffer = '\0';
 
     strncpy(camion->codigoCamion,buffer,TAM_NOMBRE);
-    //camion->codigoCamion[TAM_NOMBRE - 1]='\0';
     *(camion->codigoCamion+TAM_NOMBRE-1) = '\0';
     // fin desarmar buffer
 
@@ -1087,16 +1077,12 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
         return OP_EXITO;
     }
 
-
-    //break;
-
     case OPERACION_REU:
     {
         tContenedor contenedor_reubicar;
         int resultado = ejecutarREU(zonaOrigen, zonaDestino, &contenedor_reubicar);
         if(resultado != TODO_OK)
         {
-            //printf("Error: %d\n", resultado);
             return resultado;
         }
         printf(" El contenedor %s ha sido reubicado en la zona %s desde %s.\n", contenedor_reubicar.id, zonaDestino->codZona, zonaOrigen->codZona);
@@ -1119,8 +1105,8 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
     {
         tCamion camionAtendido;
         tZona *zonaContenedor = NULL;
-        int resultado = ejecutarENT(puerto, &camionAtendido,&zonaContenedor);              /// REVISAR -> lo que se manda no va a tener sentido, revisar que mandar para que sirva y como procesar lo que hace y devuelve
-        if(resultado != TODO_OK)                        /// RESPUESTA -> dejamos todo dentro de ejecutarENT, se sacan datos de puerto, se corrije manejo de cola para respetar TDA
+        int resultado = ejecutarENT(puerto, &camionAtendido,&zonaContenedor);
+        if(resultado != TODO_OK)
             return resultado;
         printf("Camion %s cargo el contenedor %s proveniente de zona %s. Abandona puerto.\n", camionAtendido.codigoCamion,
                camionAtendido.codigoContenedor, zonaContenedor->codZona);
@@ -1135,9 +1121,7 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
 
     case OPERACION_ESP:
     {
-        /// REVISAR -> OJO hardcodeado luego pasar a variable de configu
-        /// RESPUESTA -> segun consigna consume 1 MINUTO ver pag 8 este es el extracto: Esperar: consume exactamente 1 minuto.
-        /// ACTUALIZACION -> no uso ejecutarESP, ya se suma el tiempo en realizarEventos
+        // no usamos ejecutarESP, ya se suma el tiempo en realizarEventos
     }
 
     break;
@@ -1149,17 +1133,13 @@ int realizarOperacion(tOperacion *operacion, tZona *zonaOrigen, tZona *zonaDesti
     return TODO_OK;
 }
 
-//int ejecutarENT( tPuerto* puerto)
 int ejecutarENT( tPuerto* puerto, tCamion* camionAtendido, tZona** zonaOrigen)
 {
-    //tCamion camionFrente;
     tContenedor contenedor;
-    //if( puerto->camionesEsperando.pri  == NULL )
     if(colaVacia(&(puerto->camionesEsperando)))                                                          // verifico existencia de camiones
         return NO_HAY_CAMIONES;
 
-    //tCamion *camionFrente = (tCamion*)puerto->camionesEsperando.pri->info;                            // contenedor solicitado por camion atendido
-    verPrimeroCola(&(puerto->camionesEsperando), camionAtendido, sizeof(tCamion));
+    verPrimeroCola(&(puerto->camionesEsperando), camionAtendido, sizeof(tCamion));                  // contenedor solicitado por camion atendido
 
     *zonaOrigen = buscarZonaTope(puerto->zonas, camionAtendido->codigoContenedor);               // busco zona donde este contenedor ej C101
     if( *zonaOrigen == NULL)
@@ -1219,9 +1199,9 @@ int eventoOperadorIni(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOpe
     if(modoAperturaOperador != ARCH_CREACION && modoAperturaIndice != ARCH_CREACION)
     {
         cargarIndiceDesdeArchivo(arbol, *fpIndice);                                       // cargamos indice con operador.idx
-        //if(buscarEnArchivoConIndice(*fpIndice, arbol, operador)==CLAVE_NO_ENCONTRADA)// si no encuentra marcamos flag para el final de jornada
-        if(buscarEnArchivoConIndice(*fpOperador, arbol, operador)==CLAVE_NO_ENCONTRADA)                                                                                // operador queda con datos de archivo listo para actualizar si encuentra
-        {
+
+        if(buscarEnArchivoConIndice(*fpOperador, arbol, operador)==CLAVE_NO_ENCONTRADA)  // si no encuentra marcamos flag para el final de jornada
+        {                                                                                // operador queda con datos de archivo listo para actualizar si encuentra
             *nuevoOperador = 1;                                                        // flag nos hara saber si debemos rearmar indice o no
             operador->puntajeTotal = 0;
         }
@@ -1310,8 +1290,6 @@ int escribirJornadaIni(FILE **fp, int *modo, int* numeroJornada)                
     }
     return TODO_OK;
 }
-
-///   escribirJornadaMed(fp, operacion, comando, zonaOrigen.codZona, zonaDestino.codZona);
 
 void escribirJornadaMed(FILE **fp, const tOperacion *operacion, const char *comando, const char* origen, const char* destino)                           // avanzamos jornada y guardamos operaciones
 {
@@ -1746,7 +1724,7 @@ void leerJornada(FILE* fp, int nroJornada)
             encontrado = 1;
         else
         {
-            if(strcmp(buffer, "[HISTORIAL DE JORNADA]\n") != 0) //puede pasar que haya dos [HISTORIAL DE JORNADA] juntos si se sale antes de iniciar
+            if(strcmp(buffer, "[HISTORIAL DE JORNADA]\n") != 0)
                 printf("%s", buffer);
         }
 
