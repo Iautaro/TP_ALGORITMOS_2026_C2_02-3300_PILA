@@ -645,19 +645,13 @@ tZona* buscarZona(tPuerto *puerto, const char *idBuscado)
 
 int ejecutarREU( tZona* zonaOrigen, tZona* zonaDest, tContenedor* contenedor_desc)
 {
-    /*
-    if( zonaOrigen->contenedores == NULL)
-    {
-        return ZONA_ORIGEN_VACIA;
-    }*/
-    if(pilaVacia(&(zonaOrigen->contenedores)))
-    {
-        return ZONA_ORIGEN_VACIA;
-    }
-
-    if( strcmp(zonaOrigen->codZona, zonaDest->codZona) == 0 )
+        if( strcmp(zonaOrigen->codZona, zonaDest->codZona) == 0 )
     {
         return ZONAS_IGUALES;
+    }
+    if(pilaVacia(&(zonaOrigen->contenedores))) // Estado
+    {
+        return ZONA_ORIGEN_VACIA;
     }
 
     if( zonaDest->cantActual >= zonaDest->capacMax)
@@ -1088,7 +1082,7 @@ if( resultado != OP_EXITO)
         int resultado = ejecutarREU(zonaOrigen, zonaDestino, &contenedor_reubicar);
         if(resultado != TODO_OK)
         {
-            printf("Error: %d\n", resultado);
+            //printf("Error: %d\n", resultado);
             return resultado;
         }
         printf(" El contenedor %s ha sido reubicado en la zona %s desde %s.\n", contenedor_reubicar.id, zonaDestino->codZona, zonaOrigen->codZona);
