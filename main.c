@@ -161,7 +161,18 @@ int main()
         }
     }
     if(eleccion == SALIR)
+    {
         return TODO_OK;
+        eliminarArbol(&arbol);
+        fclose(archJornadas);
+        fclose(archOperadores);
+        fclose(archRanking);
+        fclose(archIndice);
+        free(operacion);
+        vaciarCola(&contenedores);
+        liberarPuerto(&puerto);
+    }
+
 
     /// While principal de jornada
     // son varios if anidados para evitar que se ejecute codigo en caso de errores, ya que no puedo cortar el while
@@ -207,6 +218,10 @@ int main()
                 resultadoOperacion = ejecutarOperacion(operacion, &puerto, &tiempoActual, &configuracion, &varsResumen, &archJornadas);
                 if(resultadoOperacion == ERR_MEMORIA)
                     fatalError = 1;
+                else if(resultadoEleccion == OPERACION_SAL)
+                {
+                    finJornada = OPERACION_SAL;
+                }
                 else
                 {
                     if(resultadoOperacion!= TODO_OK)
@@ -216,6 +231,8 @@ int main()
         }
     }
 
+    if(finJornada == OPERACION_SAL)
+        printf("\n\nOperador salio de la jornada.\n");
     if(finJornada == BLOQUEO_OPERATIVO)
         printf("\n\nOcurrio un bloqueo operativo. Lo vamos a hablar con tu jefe.\n");
     if(finJornada == TODO_OK && !fatalError)

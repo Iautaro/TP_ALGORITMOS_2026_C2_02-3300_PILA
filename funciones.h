@@ -8,8 +8,8 @@
 
 typedef struct{
     char codigoBuque[TAM_NOMBRE];
-    tPila cont_pend; // Cola de contenedores pendientes -> Debe ser COLA segun enunciado
-    int horaLlegada;
+    tPila cont_pend; // usamos pila porque parseamos de derecha a izquierda
+    int horaLlegada; // contenedor C003 queda al final y C001 en tope de pila respeta izquierda a derecha
 } tBuque;
 
 typedef struct{
@@ -147,7 +147,7 @@ int cmpZona(const void* a, const void* b);
 int cmpContEnZona(const void* a, const void* b);
 int cmpRanking(const void *a, const void *b);
 
-void escribirJornadaIni(FILE **fp, int *modo);
+int escribirJornadaIni(FILE **fp, int *modo);
 void escribirJornadaMed(FILE **fp, const tOperacion *operacion, const char *comando, const char* zonaOrigen, const char* zonaDestino);
 void escribirJornadaFin(FILE **fp, tResumen *res, int *error, tOperador *o);
 
