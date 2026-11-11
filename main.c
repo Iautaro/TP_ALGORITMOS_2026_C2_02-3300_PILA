@@ -1,54 +1,59 @@
 #include "primitivas.h"
 #include "funciones.h"
 
-int cmpInt(const void* a, const void* b)
-{
-    return *(const int*)a - *(const int*)b;
-}
-int cmpTiempo(const void* a, const void* b)
-{
-    const tCamion* k1 = (const tCamion*)a;
-    const tCamion* k2 = (const tCamion*)b;
-    return k1->tiempoLlegada - k2->tiempoLlegada;
-}
-
 int main()
 {
     int err = 0;
     int nuevoOperador = 0;
     int nroJornada = 0;
+    int resultadoEleccion = 0;
+    int eleccion = 0;
+    int i;
+    FILE* archConfig = NULL;
+    FILE* archPuerto = NULL;
     FILE* archOperadores = NULL;
     FILE* archJornadas = NULL;
     FILE* archIndice = NULL;
-    FILE* archRanking = NULL;
-    int resultadoEleccion = 0;
-    int eleccion = 0;
-    tOperador operador;
     tArbol arbol;
+    tOperador operador;
+    tContenedor proxCont;
+    tResumen varsResumen;
+    tPuerto puerto;
+    tConfig configuracion;
+    char* operacion;
+
+    // Se usa para validar la operacion. char en vez de int para ahorrar espacio
+    // posibles 's' o 'n' (s = si/valida, n = no/invalida) o 'e' = error
+    char validez;
+
+    int resultadoOperacion = TODO_OK;
+    int tiempoActual = 0;
+    int skipearTiempo;
+    int desdeTiempo = -1; // -1 cuando no se skipea tiempo, si es mayor o igual a 0 significa que se skipeo
+    int fatalError = 0;
+    int finJornada = TODO_OK; // 0(TODO_OK) si no es el fin, admite TODO_OK, FIN_JORNADA como fin normal, BLOQUEO_OPERATIVO como bloqueo operativo, y OPERACION_SAL cuando el jugador decide cortar la jornada
+
+
     printf("Trabajo Practico Puerto de Contenedores - Operacion Contrarreloj\n\n\n");
 
     // Variables para resumen
-    tResumen varsResumen;
     err = inicializarResumen(&varsResumen);
     if(err != TODO_OK)
         return err;
 
-    tPuerto puerto;
 
     // Actualmente se guardan en esta cola los contenedores,
     // que luego se van sacando a medida que se les asigna un camion,
     // por lo que al terminar de preparar puerto.txt queda vacia
-    tCola contenedores;
-    crearCola(&contenedores);
 
     // Apertura de config.txt y lectura de su contenido a tConfig configuracion, se cierra aca
-    FILE* archConfig = fopen("config.txt", "rt");
+    archConfig = fopen("config.txt", "rt");
     if (!archConfig)
     {
         printf("Error al abrir config.txt\n");
         return ERR_ARCHIVO;
     }
-    tConfig configuracion;
+    memset(&configuracion, 0, sizeof(tConfig));
     err = leerConfiguracion(archConfig, &configuracion);
     fclose(archConfig);
     if (err != TODO_OK)
@@ -57,34 +62,18 @@ int main()
         return err;
     }
 
-    // Apertura y/o creacion de archivo de ranking
-    err = abrirOCrearArchivo("ranking.txt", &archRanking, 't');
-    if(err == ERR_ARCHIVO || err == MODO_INVALIDO)
-    {
-        printf("Error al abrir archivo de ranking\n");
-        return err;
-    }
-    else
-    {
-        if(err == ARCH_CREACION)
-            printf("ranking.txt creado exitosamente\n");
-    }
-
     // Creacion y preparacion de archivo puerto.txt
-    FILE* archPuerto = fopen("puerto.txt", "w+t");
+    archPuerto = fopen("puerto.txt", "w+t");
     if(!archPuerto)
     {
         printf("Error al crear archivo puerto.txt\n");
-        fclose(archRanking);
         return ERR_ARCHIVO;
     }
-    err = prepararPuerto(&puerto, archPuerto, &configuracion, &contenedores, cmpInt, cmpTiempo);
+    err = prepararPuerto(&puerto, archPuerto, &configuracion, cmpInt, cmpTiempo);
     if(err != TODO_OK)
     {
-        fclose(archRanking);
         fclose(archPuerto);
         liberarPuerto(&puerto);
-        vaciarCola(&contenedores);
         return err;
     }
     fclose(archPuerto);
@@ -97,9 +86,7 @@ int main()
     crearArbol(&arbol);
     if((err = eventoOperadorIni(&archOperadores, &archJornadas, &archIndice, &operador, &arbol, &nuevoOperador, &nroJornada)) != TODO_OK)
     {
-        fclose(archRanking);
         liberarPuerto(&puerto);
-        vaciarCola(&contenedores);
         eliminarArbol(&arbol);
         printf("Falla al realizar el evento de operador con error %d.\n", err);
         return err;
@@ -114,26 +101,18 @@ int main()
     */
 
     // Creacion de variable para ingresar operacion
-    char* operacion = malloc(MAX_CODIGO);
+    operacion = malloc(MAX_CODIGO);
     if(!operacion)
     {
         printf("Error al crear variable para la operacion\n");
         fclose(archJornadas);
         fclose(archOperadores);
-        fclose(archRanking);
-        vaciarCola(&contenedores);
+        fclose(archIndice);
+        liberarPuerto(&puerto);
         eliminarArbol(&arbol);
         return ERR_MEMORIA;
     }
 
-    // Se usa para validar la operacion. char en vez de int para ahorrar espacio (analizar viabilidad de bool)
-    // posibles 's' o 'n' (s = si/valida, n = no/invalida) o 'e' = error
-    char validez;
-    int resultadoOperacion = TODO_OK;
-    int tiempoActual = 0;
-    int skipearTiempo;
-    int fatalError = 0;
-    int finJornada = TODO_OK; // 0(TODO_OK) si no es el fin, admite TODO_OK, FIN_JORNADA como fin normal, BLOQUEO_OPERATIVO como bloqueo operativo, y OPERACION_SAL cuando el jugador decide cortar la jornada
 
     // por si hay alguno en T=0
     if(vigiladorBuques(&puerto, 0) != TODO_OK || vigiladorCamiones(&puerto, 0) != TODO_OK)
@@ -143,15 +122,15 @@ int main()
 
     /// Menu principal
     mostrarMenu();
-    printf("\nOPERADOR> ");
+    printf("\n\nOPERADOR> ");
     while(eleccion != SALIR && eleccion != INICIAR && !fatalError)
     {
         ingresarTexto(MAX_CODIGO, operacion);
         validez = validarEleccion(operacion);
         while(validez != 's')
         {
-            printf("\nElección invalida.");
-            printf("\nOPERADOR> ");
+            printf("\nEleccion invalida.");
+            printf("\n\nOPERADOR> ");
             ingresarTexto(MAX_CODIGO, operacion);
             validez = validarEleccion(operacion);
         }
@@ -166,13 +145,13 @@ int main()
     }
     if(eleccion == SALIR)
     {
+        fflush(archJornadas);
+        fprintf(archJornadas,"Jornada sin eventos - Salida por Menu\n");
         eliminarArbol(&arbol);
         fclose(archJornadas);
         fclose(archOperadores);
-        fclose(archRanking);
         fclose(archIndice);
         free(operacion);
-        vaciarCola(&contenedores);
         liberarPuerto(&puerto);
         return TODO_OK;
     }
@@ -190,6 +169,8 @@ int main()
         {
             if(hayOperacionValida(&puerto, tiempoActual, &configuracion) == REVISAR_EVENTOS)
             {
+                if(desdeTiempo < 0)
+                    desdeTiempo = tiempoActual;
                 skipearTiempo = haySkipAProximoEvento(&puerto, &tiempoActual, &configuracion);
                 if(skipearTiempo == ERR_MEMORIA)
                     fatalError = 1;
@@ -201,11 +182,33 @@ int main()
             }
             else
             {
+                if(desdeTiempo >= 0)
+                {
+                    printf("\nTomando un cafe. Avanzando tiempo de %d a %d...\n", desdeTiempo, tiempoActual);
+                    desdeTiempo = -1;
+                }
+
+                // mostrar el tiempo y los muelles
+                // si un muelle esta libre, se muestra libre
+                // si un muelle tiene buque, se muestra el proximo contenedor del buque
+                printf("\nT=%d\n", tiempoActual);
+                for(i = 0; i < puerto.cantMuelles; i++)
+                {
+                    if((puerto.muelles + i)->buqueAct == NULL)
+                        printf("%s: Libre\n", (puerto.muelles + i)->codMuelle);
+                    else
+                    {
+                        if(verTope(&(puerto.muelles + i)->buqueAct->cont_pend, &proxCont, sizeof(tContenedor)) == TODO_OK)
+                            printf("%s: %s -> proximo contenedor %s\n", (puerto.muelles + i)->codMuelle, (puerto.muelles + i)->buqueAct->codigoBuque, proxCont.id);
+                    }
+
+                }
+
                 // Mostrar los codigos y sus sintaxis
                 mostrarOperaciones();
 
                 // Ingreso de operacion
-                printf("\nOPERADOR> ");
+                printf("\n\nOPERADOR> ");
                 ingresarTexto(MAX_CODIGO, operacion);
                 // Validacion de la operacion ingresada
                 validez = validarOperacion(operacion);
@@ -214,7 +217,7 @@ int main()
                 while(validez != 's')
                 {
                     printf("\nOperacion invalida.");
-                    printf("\nOPERADOR> ");
+                    printf("\n\nOPERADOR> ");
                     ingresarTexto(MAX_CODIGO, operacion);
                     validez = validarOperacion(operacion);
                 }
@@ -266,10 +269,8 @@ int main()
     eliminarArbol(&arbol);
     fclose(archJornadas);
     fclose(archOperadores);
-    fclose(archRanking);
     fclose(archIndice);
     free(operacion);
-    vaciarCola(&contenedores);
     liberarPuerto(&puerto);
     return TODO_OK;
 }

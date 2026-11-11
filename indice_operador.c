@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <string.h>
-#include "operador.h"
 #include "indice_operador.h"
 
 int compararClaveIndice(const void *a, const void *b) // comparamos por Nombre y Puntaje
@@ -9,16 +8,6 @@ int compararClaveIndice(const void *a, const void *b) // comparamos por Nombre y
     const tIndice *idxB = (const tIndice*)b;
 
     return strcmp(idxA->nombreOperador, idxB->nombreOperador);
-}
-
-void mostrarIndice(const tIndice *pi, unsigned nivel)
-{
-    while(nivel--)
-        printf("|");
-
-    printf("- indice:%3u - %s\n",
-           pi->indiceRegistro,
-           pi->nombreOperador);
 }
 
 
@@ -98,83 +87,6 @@ int indexarArchivoOperador(FILE *fp, tArbol *pa)
     return ARCHIVO_INDEXADO;
 }
 
-/*
-void cargarArchivoOrdenadoEnIndiceBalanceado(tArbol *pa,
-        FILE *fp,
-        int inicio,
-        int fin)
-
-{
-    size_t medio = (fin+inicio)/2;
-    tIndice indice;
-    tOperador operador;
-
-    if (inicio > fin)
-        return;
-
-    fseek(fp, medio*sizeof(tOperador), SEEK_SET);
-    fread(&operador, 1, sizeof(tOperador), fp);
-    strncpy(indice.clave.nombreOperador,operador.nombre,TAM_NOMBRE)
-    indice.indiceRegistro = medio;
-
-    insertarArbolBinBusq(pa, &indice, sizeof(tIndice), compararClaveIndice);
-    cargarArchivoOrdenadoEnIndiceBalanceado(pa, fp, inicio, medio-1);
-    cargarArchivoOrdenadoEnIndiceBalanceado(pa, fp, medio+1, fin);
-}
-
-int indexarArchivoOperadorOrdenado(const char *nombreArchivo,
-                                   tArbol *p)
-
-{
-    FILE *fp;
-    size_t cantidadRegistros;
-
-    fp = fopen(nombreArchivo, "rb");
-    if(!fp)
-    {
-        printf("No se ha encontrado el archivo \"%s\" para indexarlo\n",
-               nombreArchivo);
-        return ARCHIVO_NO_INDEXADO;
-    }
-
-    fseek(fp, 0, SEEK_END);
-    cantidadRegistros = ftell(fp) / sizeof(tOperador);
-
-    cargarArchivoOrdenadoEnIndiceBalanceado(p, fp, 0, cantidadRegistros-1);
-
-    rewind(fp);
-    return ARCHIVO_INDEXADO;
-}
-*/
-
-void mostrarArbolIndiceImpl(const tArbol *p, unsigned nivel)
-
-{
-    unsigned i;
-    tIndice *info;
-
-    if (!*p)
-        return;
-
-
-    mostrarArbolIndiceImpl(&(*p)->der, nivel + 1);
-
-    for (i = 0; i < nivel; i++)
-        printf(" ");
-
-    info = (tIndice *)(*p)->info;
-    printf("[Operador: %s] (reg: %u)\n",
-           info->nombreOperador,
-           info->indiceRegistro);
-
-    mostrarArbolIndiceImpl(&(*p)->izq, nivel + 1);
-}
-
-void mostrarArbolIndice(const tArbol *p)
-
-{
-    mostrarArbolIndiceImpl(p, 0);
-}
 
 void guardarNodoEnArchivo(void *info, unsigned tam, unsigned n, void *params)
 
@@ -188,13 +100,6 @@ int guardarIndiceEnArchivoPreOrden(const tArbol *p, FILE *fp)
 
 {
     recorrerArbolPreOrden(p, 0, fp, guardarNodoEnArchivo);
-    return TODO_OK; // Éxito
-}
-
-int guardarIndiceEnArchivoInOrden(const tArbol *p, FILE *fp)
-
-{
-    recorrerArbolInOrden(p, 0, fp, guardarNodoEnArchivo);
     return TODO_OK; // Éxito
 }
 

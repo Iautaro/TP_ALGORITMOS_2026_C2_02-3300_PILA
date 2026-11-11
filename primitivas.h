@@ -9,12 +9,10 @@
 
 #define TAM_NOMBRE 100
 #define TAM_COD_MUELLE 4
-#define TAM_PILA 200
 #define TAM_NOM_CONTENEDOR 6
 #define TAM_COD_ZONA 4
-#define CANT_MUELLES
 #define MAX_LINEA_CONFIG 35
-#define MAX_CODIGO 12
+#define MAX_CODIGO 13
 #define CANT_COMANDOS 6
 #define CANT_COMANDOS_MENU 3
 
@@ -28,37 +26,21 @@
 #define PUERTO_LLENO 5
 #define BUQUE_COMPLETO 6
 
-#define ERR -1
-
 #define OP_EXITO 0
 #define COMANDO_INVALIDO -1
-#define FALTAN_PARAMETROS -2
-#define PARAMETRO_INCORRECTO -3
-#define EXCESO_PARAMETROS -4
 
 #define ZONA_ORIGEN_VACIA -5
 #define ZONAS_IGUALES -6
 
-#define MAX_CANT_PAL 4
-#define MIN(a,b) ((a) < (b)? (a):(b)) /// DIFERENCIA CON minimo DE MIEL, razón?
-
-#define TAM_NOMBRE 100
-#define TAM_CONTENEDORES 500
-#define TAM_PILA 200
 #define TAM_LINEA_BUFF_LECTURA 200
 #define TAM_LINEA_CODIGO_CONT 100
-#define TAM_COD_MUELLE 4
 
-#define TODO_OK 0
-#define ERR_VIGILADOR 201
 #define ERR_ARCHIVO 202
 #define ERR_LINEA_LARGA 203
 #define ERR_MEMORIA 204
 #define ERR_PARAM 205
 #define FIN_JORNADA 206
 #define NO_HALLADO 207
-#define FIN_CAMIONES 208
-#define FIN_BUQUE 209
 #define NO_HAY_CAMIONES 210
 #define CONTENEDOR_NO_DISPONIBLE 211
 #define BLOQUEO_OPERATIVO 212
@@ -82,7 +64,9 @@
 #define RANKING 258
 
 #define PILA_VACIA 1
+#define PILA_LLENA 2
 #define COLA_VACIA 1
+#define COLA_LLENA 2
 #define LISTA_LLENA 1
 #define LISTA_VACIA 2
 
@@ -113,6 +97,7 @@ int ponerEnCola(tCola *p, const void *d, unsigned cantBytes);
 int sacarDeCola(tCola *p, void *d, unsigned cantBytes);
 int verPrimeroCola(const tCola *p, void *d, unsigned cantBytes);
 int colaVacia( const tCola *c);
+int colaLlena( const tCola *p, unsigned tam);
 void vaciarCola(tCola *p);
 int recorrerHastaXCola(const tCola *p, Accion accion, unsigned cant);
 int contarCola(tCola *p);
