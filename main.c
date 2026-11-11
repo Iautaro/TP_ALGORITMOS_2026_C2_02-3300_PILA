@@ -77,10 +77,7 @@ int main()
         return err;
     }
     fclose(archPuerto);
-    /// RESPUESTA(20) -> se crea evento operador inicial y final para manejar arboles y sesion
-    /// IMPORTANTE(20) -> el indice tiene mismos campos que el operador, nos queda doble clave para el indice, se puede reducir? o ampliamos
-    ///                   caracteristicas de operador para que no quede igual indice y archivo?
-    /// reducimos clave a solo codigo
+
     // Apertura o creacion de archivos de operador y jornada, tambien es inicio de sesion
     memset(&operador, 0, sizeof(tOperador));
     crearArbol(&arbol);
@@ -91,14 +88,6 @@ int main()
         printf("Falla al realizar el evento de operador con error %d.\n", err);
         return err;
     }
-
-    /// REVISAR(20) -> esto esta pendiente, el 20 es random pero esta linkeado a RESPUESTA(20)
-    /*
-        iniciar sesión de operador (inicio de operaciones / inicio de temporizador)
-        apertura y/o creacion de archivo operadores.txt
-        agregar operador si no existe
-        iniciar_jornada ()	TEMPORIZADOR = 0 M. (revisar si hay buque, camion en tiempo 0)
-    */
 
     // Creacion de variable para ingresar operacion
     operacion = malloc(MAX_CODIGO);
@@ -245,8 +234,6 @@ int main()
     if(finJornada == TODO_OK && !fatalError)
         printf("\n\nYa podes irte a casa, la jornada finalizo.\n");
 
-    /// RESPUESTA(20) -> se crea evento operador inicial y final para manejar arboles y sesion
-    /// REVISAR(21) -> pendiente los cierres del operador y fichar los eventos de la jornada en archivo jornada
     // Aca van ultimos pasos para registrar jornada y cerrar operador.
     if(fatalError)
         printf("\nError de memoria!\n");

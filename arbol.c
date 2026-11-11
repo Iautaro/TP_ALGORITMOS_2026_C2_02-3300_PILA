@@ -20,7 +20,7 @@ void eliminarArbol(tArbol *pa)
 }
 
 int insertarArbolBinBusq(tArbol *pa,
-                         const void *d, // dato
+                         const void *d,
                          unsigned tam,
                          int (*cmp)(const void *, const void *))
 {
@@ -33,7 +33,7 @@ int insertarArbolBinBusq(tArbol *pa,
             return insertarArbolBinBusq(&(*pa)->izq, d, tam, cmp);
         if (rc > 0)
             return insertarArbolBinBusq(&(*pa)->der, d, tam, cmp);
-        // encontramos mismo Operador y actualizamos
+
         memcpy((*pa)->info, d, tam);
         return CLA_DUP;
     }

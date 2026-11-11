@@ -25,7 +25,7 @@ int buscarEnArchivoConIndice(FILE *fp, const tArbol *pa, tOperador *o)
                                     sizeof(tIndice),
                                     compararClaveIndice);
 
-    if(claveEncontrada == HALLADO) //if(claveEncontrada) --> NUNCA ES FALSO pq buscarEnArbol devuelve 0 o 207
+    if(claveEncontrada == HALLADO) // buscarEnArbol devuelve HALLADO o NO_HALLADO
     {
         fseek(fp, idx.indiceRegistro * sizeof(tOperador), SEEK_SET);
         fread(o, sizeof(tOperador), 1, fp);
@@ -51,7 +51,7 @@ int guardarEnArchivoConIndice(FILE *fp, const tArbol *pa, tOperador *o)
                                     sizeof(tIndice),
                                     compararClaveIndice);
 
-    if(claveEncontrada == HALLADO) //MISMO CASO que en buscarArcConIndic -->if(claveEncontrada) --> NUNCA ES FALSO pq buscarEnArbol devuelve 0 o 207
+    if(claveEncontrada == HALLADO)
     {
         fseek(fp, idx.indiceRegistro * sizeof(tOperador), SEEK_SET);
         fwrite(o, sizeof(tOperador), 1, fp);
