@@ -86,6 +86,8 @@
 #define LISTA_LLENA 1
 #define LISTA_VACIA 2
 
+#define PENALIZACION 2
+
 #define minimo( X , Y ) ( ( X ) <= ( Y ) ? ( X ) : ( Y ) )
 
 typedef struct sNodo{

@@ -16,6 +16,7 @@ int main()
 {
     int err = 0;
     int nuevoOperador = 0;
+    int nroJornada = 0;
     FILE* archOperadores = NULL;
     FILE* archJornadas = NULL;
     FILE* archIndice = NULL;
@@ -92,8 +93,9 @@ int main()
     ///                   caracteristicas de operador para que no quede igual indice y archivo?
     /// reducimos clave a solo codigo
     // Apertura o creacion de archivos de operador y jornada, tambien es inicio de sesion
+    memset(&operador, 0, sizeof(tOperador));
     crearArbol(&arbol);
-    if((err = eventoOperadorIni(&archOperadores, &archJornadas, &archIndice, &operador, &arbol, &nuevoOperador)) != TODO_OK)
+    if((err = eventoOperadorIni(&archOperadores, &archJornadas, &archIndice, &operador, &arbol, &nuevoOperador, &nroJornada)) != TODO_OK)
     {
         fclose(archRanking);
         liberarPuerto(&puerto);
@@ -119,6 +121,8 @@ int main()
         fclose(archJornadas);
         fclose(archOperadores);
         fclose(archRanking);
+        vaciarCola(&contenedores);
+        eliminarArbol(&arbol);
         return ERR_MEMORIA;
     }
 
@@ -129,7 +133,7 @@ int main()
     int tiempoActual = 0;
     int skipearTiempo;
     int fatalError = 0;
-    int finJornada = TODO_OK; // 0(TODO_OK) si no es el fin, admite TODO_OK, FIN_JORNADA como fin normal y BLOQUEO_OPERATIVO como bloqueo operativo
+    int finJornada = TODO_OK; // 0(TODO_OK) si no es el fin, admite TODO_OK, FIN_JORNADA como fin normal, BLOQUEO_OPERATIVO como bloqueo operativo, y OPERACION_SAL cuando el jugador decide cortar la jornada
 
     // por si hay alguno en T=0
     if(vigiladorBuques(&puerto, 0) != TODO_OK || vigiladorCamiones(&puerto, 0) != TODO_OK)
@@ -146,7 +150,7 @@ int main()
         validez = validarEleccion(operacion);
         while(validez != 's')
         {
-            printf("\Elección invalida.");
+            printf("\nElección invalida.");
             printf("\nOPERADOR> ");
             ingresarTexto(MAX_CODIGO, operacion);
             validez = validarEleccion(operacion);
@@ -162,7 +166,6 @@ int main()
     }
     if(eleccion == SALIR)
     {
-        return TODO_OK;
         eliminarArbol(&arbol);
         fclose(archJornadas);
         fclose(archOperadores);
@@ -171,6 +174,7 @@ int main()
         free(operacion);
         vaciarCola(&contenedores);
         liberarPuerto(&puerto);
+        return TODO_OK;
     }
 
 
@@ -218,7 +222,7 @@ int main()
                 resultadoOperacion = ejecutarOperacion(operacion, &puerto, &tiempoActual, &configuracion, &varsResumen, &archJornadas);
                 if(resultadoOperacion == ERR_MEMORIA)
                     fatalError = 1;
-                else if(resultadoEleccion == OPERACION_SAL)
+                else if(resultadoOperacion == OPERACION_SAL)
                 {
                     finJornada = OPERACION_SAL;
                 }
@@ -232,7 +236,7 @@ int main()
     }
 
     if(finJornada == OPERACION_SAL)
-        printf("\n\nOperador salio de la jornada.\n");
+        printf("\n\nFue un gusto, nosotros nos encargamos desde aca.\n");
     if(finJornada == BLOQUEO_OPERATIVO)
         printf("\n\nOcurrio un bloqueo operativo. Lo vamos a hablar con tu jefe.\n");
     if(finJornada == TODO_OK && !fatalError)
@@ -247,12 +251,17 @@ int main()
     {
         varsResumen.tiempoUtilizado = tiempoActual;
         varsResumen.camionesPendientes = contarCola(&puerto.camionesEsperando);
-        varsResumen.puntuacionFinal -= 2*varsResumen.camionesPendientes;
+        varsResumen.puntuacionFinal -= PENALIZACION*varsResumen.camionesPendientes;
         operador.puntajeTotal += varsResumen.puntuacionFinal;
     }
     printf("\n*\n*\n*\n* Cerrando numeros...\n*\n*\n*\n");
+
+    operador.jornadasTotal++;
     eventoOperadorFin(&archOperadores, &archJornadas, &archIndice, &operador, &arbol, &nuevoOperador, &varsResumen, &fatalError);
 
+    fflush(archJornadas);
+    rewind(archJornadas);
+    leerJornada(archJornadas, nroJornada);
 
     eliminarArbol(&arbol);
     fclose(archJornadas);
@@ -262,5 +271,5 @@ int main()
     free(operacion);
     vaciarCola(&contenedores);
     liberarPuerto(&puerto);
-    return 0;
+    return TODO_OK;
 }

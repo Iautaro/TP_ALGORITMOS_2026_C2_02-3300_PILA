@@ -58,3 +58,5 @@ bin/
 obj/
 *.layout
 *.depend
+
+puerto.txt
