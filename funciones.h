@@ -47,8 +47,9 @@ typedef struct
     int tiempoDeCreacion;
     int tiempoDeFinalizacion;
     char codigoContenedor[TAM_NOM_CONTENEDOR];
-    int recurso;
     int puntuacion;
+    char origen[MAX_CODIGO];
+    char destino[MAX_CODIGO];
 } tOperacion;
 
 typedef struct
@@ -134,7 +135,7 @@ int duracionOperacion(int codOperacion, const tConfig *config);
 int hayOperacionValida(tPuerto* puerto, int tiempoAct, const tConfig* config);
 int haySkipAProximoEvento(tPuerto* puerto, int* tiempoAct, tConfig* config);
 
-int eventoOperadorIni(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador);
+int eventoOperadorIni(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador, int* nroJornada);
 int eventoOperadorFin(FILE **fpOperador, FILE **fpJornada, FILE **fpIndice, tOperador *operador, tArbol *arbol, int *nuevoOperador, tResumen *resumen, int *error);
 
 int jornadaTerminada(tPuerto* puerto);
@@ -147,9 +148,10 @@ int cmpZona(const void* a, const void* b);
 int cmpContEnZona(const void* a, const void* b);
 int cmpRanking(const void *a, const void *b);
 
-int escribirJornadaIni(FILE **fp, int *modo);
-void escribirJornadaMed(FILE **fp, const tOperacion *operacion, const char *comando, const char* zonaOrigen, const char* zonaDestino);
+int escribirJornadaIni(FILE **fp, int *modo, int* numeroJornada);
+void escribirJornadaMed(FILE **fp, const tOperacion *operacion, const char *comando, const char* origen, const char* destino);
 void escribirJornadaFin(FILE **fp, tResumen *res, int *error, tOperador *o);
+void leerJornada(FILE* fp, int nroJornada);
 
 void mostrarMenu();
 char validarEleccion(char* operacion);
